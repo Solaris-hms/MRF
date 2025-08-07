@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+body {
+    background-color: #f8fafc; /* bg-slate-50 */
+}
+
+/* --- ADD THESE CLASSES FOR CONSISTENT TABLE STYLING --- */
+@layer components {
+    .th {
+        @apply px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider;
+    }
+
+    .td {
+        @apply px-4 py-4 whitespace-nowrap text-sm text-slate-700;
+    }
+}
+
+/* For Chrome, Safari, Edge, Opera */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* For Firefox */
+input[type=number] {
+  -moz-appearance: textfield;
+}
