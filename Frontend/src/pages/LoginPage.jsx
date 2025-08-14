@@ -40,7 +40,7 @@ const LoginPage = () => {
         </div>
 
         <div className="p-8 md:p-12">
-          <h2 className="text-3xl font-extrabold text-slate-800 mb-2">Welcome Back</h2>
+          <h2 className="text-3xl font-extrabold text-slate-800 mb-2">Welcome Back..</h2>
           <p className="text-slate-500 mb-8">Please sign in to continue.</p>
           
           <form onSubmit={handleLogin} className="flex flex-col gap-5">
