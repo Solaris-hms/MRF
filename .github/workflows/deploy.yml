@@ -1,0 +1,51 @@
+# .github/workflows/deploy.yml
+
+name: Deploy Full-Stack App to Lightsail
+
+# This action runs on every push to the 'main' branch
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    # The type of runner that the job will run on
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Log into the server via SSH and run the deployment script
+      - name: SSH into Lightsail and Deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
+
+          script: |
+            # Navigate to the project directory
+            cd ~/MRF
+            
+            # Pull the latest changes from the main branch
+            echo ">>> Pulling latest code from GitHub..."
+            git pull origin main
+            
+            # --- Backend Deployment ---
+            echo ">>> Deploying Backend..."
+            cd ~/MRF/Backend
+            echo "Building Go executable..."
+            go build -o my-go-app main.go
+            echo "Restarting Go API with PM2..."
+            pm2 restart go-api --update-env
+            
+            # --- Frontend Deployment ---
+            echo ">>> Deploying Frontend..."
+            cd ~/MRF/Frontend
+            echo "Installing frontend dependencies..."
+            npm install
+            echo "Building React app..."
+            npm run build
+            echo "Copying built files to Nginx directory..."
+            sudo cp -r ~/MRF/Frontend/dist/* /var/www/my-react-app/
+            
+            echo ">>> Deployment Successful!"
