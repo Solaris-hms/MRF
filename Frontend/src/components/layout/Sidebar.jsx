@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { FaGlobe, FaChartBar, FaCog, FaSignOutAlt, FaChevronRight, FaTruck, FaMoneyBillWave, FaUserCheck, FaUsers } from 'react-icons/fa';
+import { FaGlobe, FaChartBar, FaCog, FaSignOutAlt, FaChevronRight, FaTruck, FaMoneyBillWave, FaUserCheck, FaUsers, FaHardHat, FaImages } from 'react-icons/fa';
 import authService from '../../services/authService';
 
 const Sidebar = ({ setSidebarOpen }) => {
@@ -42,8 +42,10 @@ const Sidebar = ({ setSidebarOpen }) => {
         { name: 'Sorting', path: '/sorting' },
         { name: 'Inventory', path: '/inventory' },
         { name: 'Attendance', path: '/attendance' },
-        // --- THIS IS THE NEW LINK ---
         { name: 'Employees', path: '/employees' },
+        { name: 'Asset Management', path: '/assets' },
+        // --- THIS IS THE NEW LINK ---
+        { name: 'Image Log', path: '/image-log' },
       ]
     },
     {

@@ -17,8 +17,10 @@ import CashbookPage from './pages/CashbookPage';
 import MaterialSalesPage from './pages/MaterialSalesPage';
 import authService from './services/authService';
 import AttendancePage from './pages/AttendancePage';
-// --- THIS IS THE NEW IMPORT ---
 import EmployeePage from './pages/EmployeePage';
+import AssetManagementPage from './pages/AssetManagementPage';
+// --- THIS IS THE NEW IMPORT ---
+import ImageLogPage from './pages/ImageLogPage';
 
 
 const ProtectedRoute = () => {
@@ -110,8 +112,10 @@ function App() {
             <Route path="/sorting" element={<SortingPage />} />
             <Route path="/inventory" element={<InventoryPage />} />
             <Route path="/attendance" element={<AttendancePage />} />
-            {/* --- THIS IS THE NEW ROUTE --- */}
             <Route path="/employees" element={<EmployeePage />} />
+            <Route path="/assets" element={<AssetManagementPage />} />
+            {/* --- THIS IS THE NEW ROUTE --- */}
+            <Route path="/image-log" element={<ImageLogPage />} />
         </Route>
       </Route>
     </Routes>

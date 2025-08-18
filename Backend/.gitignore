@@ -1,0 +1,5 @@
+# Ignore environment files that contain secrets
+.env
+
+# Ignore compiled Go binaries
+my-go-app

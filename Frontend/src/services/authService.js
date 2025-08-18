@@ -1,7 +1,9 @@
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
-const API_URL = 'http://localhost:8080/api/auth';
+// --- THIS IS THE FIX ---
+// The API_URL is now a relative path, just like in apiService.js.
+const API_URL = '/api/auth';
 
 // Register a new user with all fields
 const register = (fullName, username, email, designation, password) => {

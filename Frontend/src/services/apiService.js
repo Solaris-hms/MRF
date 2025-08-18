@@ -1,7 +1,10 @@
 import axios from 'axios';
 import authService from './authService';
 
-const API_URL = 'http://localhost:8080/api';
+// --- THIS IS THE FIX ---
+// The API_URL is now a relative path. It will automatically use the
+// domain of the frontend, which is exactly what we want when using Nginx.
+const API_URL = '/api';
 
 const api = axios.create({
     baseURL: API_URL,
