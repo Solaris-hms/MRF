@@ -10,11 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Get the source code from your repository.
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Step 2: Build the Go backend ON THE GITHUB RUNNER.
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
@@ -24,7 +22,6 @@ jobs:
           cd Backend
           go build -o my-go-app main.go
 
-      # Step 3: Build the React frontend ON THE GITHUB RUNNER.
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -35,31 +32,40 @@ jobs:
           npm install
           npm run build
 
-      # Step 4: Deploy the BUILT ARTIFACTS to your Lightsail server.
-      - name: Deploy to Lightsail via SSH
+      # --- THIS IS THE UPDATED DEPLOYMENT STEP ---
+      - name: Deploy Files to Lightsail
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.LIGHTSAIL_HOST }}
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
-          # --- This script is now much simpler! ---
-          # It only copies files and restarts services. NO building happens on your server.
+          # Use 'source' and 'target' for reliable file copying
+          source: "Backend/my-go-app,Frontend/dist/"
+          target: "~/temp_deploy" # Deploy to a temporary directory first
+
+      - name: Activate New Version on Lightsail
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
           script: |
             echo "Stopping services..."
             pm2 stop go-api || true
             
-            echo "Removing old application files..."
-            rm -f ~/MRF/Backend/my-go-app
-            sudo rm -rf /var/www/my-react-app/*
-            
-            echo "Copying new built files from GitHub Runner..."
-            # The ssh-action automatically copies the built files to your server's home (~) directory.
-            # We now move them to their final destination.
-            mv ~/my-go-app ~/MRF/Backend/my-go-app
+            echo "Deploying new backend executable..."
+            mv ~/temp_deploy/my-go-app ~/MRF/Backend/my-go-app
             chmod +x ~/MRF/Backend/my-go-app
-            sudo mv ~/dist/* /var/www/my-react-app/
             
-            echo "Creating/Updating backend .env file from secrets..."
+            echo "Deploying new frontend files..."
+            sudo rm -rf /var/www/my-react-app/*
+            sudo mv ~/temp_deploy/dist/* /var/www/my-react-app/
+            
+            echo "Setting web directory permissions..."
+            sudo chown -R www-data:www-data /var/www/my-react-app
+            sudo chmod -R 755 /var/www/my-react-app
+            
+            echo "Creating/Updating backend .env file..."
             echo "DB_SOURCE=postgresql://myapp_user:${{ secrets.DB_PASSWORD }}@localhost:5432/myapp_db" > ~/MRF/Backend/.env
             echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> ~/MRF/Backend/.env
             
@@ -67,5 +73,8 @@ jobs:
             cd ~/MRF/Backend
             pm2 restart go-api --update-env
             sudo systemctl restart nginx
+            
+            echo "Cleaning up temporary directory..."
+            rm -rf ~/temp_deploy
             
             echo ">>> Deployment Successful!"
