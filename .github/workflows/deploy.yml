@@ -32,34 +32,31 @@ jobs:
           npm install
           npm run build
 
-      # --- THIS IS THE UPDATED DEPLOYMENT STEP ---
-      - name: Deploy Files to Lightsail
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.LIGHTSAIL_HOST }}
-          username: ${{ secrets.LIGHTSAIL_USER }}
-          key: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
-          # Use 'source' and 'target' for reliable file copying
-          source: "Backend/my-go-app,Frontend/dist/"
-          target: "~/temp_deploy" # Deploy to a temporary directory first
-
-      - name: Activate New Version on Lightsail
+      # The change is in the 'script' section below
+      - name: Deploy to Lightsail and Activate
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.LIGHTSAIL_HOST }}
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
           script: |
+            # --- THIS IS THE NEW DEBUGGING STEP ---
+            # Let's see what files the ssh-action actually copied to the server's home directory.
+            echo "--- Listing files in the home directory after copy ---"
+            ls -lA ~
+            echo "----------------------------------------------------"
+            
             echo "Stopping services..."
             pm2 stop go-api || true
             
             echo "Deploying new backend executable..."
-            mv ~/temp_deploy/my-go-app ~/MRF/Backend/my-go-app
+            mv ~/my-go-app ~/MRF/Backend/my-go-app
             chmod +x ~/MRF/Backend/my-go-app
             
             echo "Deploying new frontend files..."
             sudo rm -rf /var/www/my-react-app/*
-            sudo mv ~/temp_deploy/dist/* /var/www/my-react-app/
+            # We are now moving from the 'dist' directory which should be in the home folder
+            sudo mv ~/dist/* /var/www/my-react-app/
             
             echo "Setting web directory permissions..."
             sudo chown -R www-data:www-data /var/www/my-react-app
@@ -73,8 +70,5 @@ jobs:
             cd ~/MRF/Backend
             pm2 restart go-api --update-env
             sudo systemctl restart nginx
-            
-            echo "Cleaning up temporary directory..."
-            rm -rf ~/temp_deploy
             
             echo ">>> Deployment Successful!"
