@@ -1,8 +1,5 @@
-# .github/workflows/deploy.yml
-
 name: Deploy Full-Stack App to Lightsail
 
-# This action runs on every push to the 'main' branch
 on:
   push:
     branches:
@@ -10,42 +7,65 @@ on:
 
 jobs:
   deploy:
-    # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Log into the server via SSH and run the deployment script
-      - name: SSH into Lightsail and Deploy
+      # Step 1: Get the source code from your repository.
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Step 2: Build the Go backend ON THE GITHUB RUNNER.
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      - name: Build Go Backend
+        run: |
+          cd Backend
+          go build -o my-go-app main.go
+
+      # Step 3: Build the React frontend ON THE GITHUB RUNNER.
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Frontend Dependencies & Build
+        run: |
+          cd Frontend
+          npm install
+          npm run build
+
+      # Step 4: Deploy the BUILT ARTIFACTS to your Lightsail server.
+      - name: Deploy to Lightsail via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.LIGHTSAIL_HOST }}
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
-
+          # --- This script is now much simpler! ---
+          # It only copies files and restarts services. NO building happens on your server.
           script: |
-            # Navigate to the project directory
-            cd ~/MRF
+            echo "Stopping services..."
+            pm2 stop go-api || true
             
-            # Pull the latest changes from the main branch
-            echo ">>> Pulling latest code from GitHub..."
-            git pull origin main
+            echo "Removing old application files..."
+            rm -f ~/MRF/Backend/my-go-app
+            sudo rm -rf /var/www/my-react-app/*
             
-            # --- Backend Deployment ---
-            echo ">>> Deploying Backend..."
+            echo "Copying new built files from GitHub Runner..."
+            # The ssh-action automatically copies the built files to your server's home (~) directory.
+            # We now move them to their final destination.
+            mv ~/my-go-app ~/MRF/Backend/my-go-app
+            chmod +x ~/MRF/Backend/my-go-app
+            sudo mv ~/dist/* /var/www/my-react-app/
+            
+            echo "Creating/Updating backend .env file from secrets..."
+            echo "DB_SOURCE=postgresql://myapp_user:${{ secrets.DB_PASSWORD }}@localhost:5432/myapp_db" > ~/MRF/Backend/.env
+            echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> ~/MRF/Backend/.env
+            
+            echo "Restarting services..."
             cd ~/MRF/Backend
-            echo "Building Go executable..."
-            go build -o my-go-app main.go
-            echo "Restarting Go API with PM2..."
             pm2 restart go-api --update-env
-            
-            # --- Frontend Deployment ---
-            echo ">>> Deploying Frontend..."
-            cd ~/MRF/Frontend
-            echo "Installing frontend dependencies..."
-            npm install
-            echo "Building React app..."
-            npm run build
-            echo "Copying built files to Nginx directory..."
-            sudo cp -r ~/MRF/Frontend/dist/* /var/www/my-react-app/
+            sudo systemctl restart nginx
             
             echo ">>> Deployment Successful!"
