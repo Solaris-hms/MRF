@@ -208,3 +208,17 @@ type SaveAttendanceRequest struct {
 	Date    string             `json:"date" binding:"required"` // YYYY-MM-DD
 	Records []AttendanceRecord `json:"records" binding:"required"`
 }
+type Asset struct {
+	ID           string    `json:"id"`
+	Name         string    `json:"name" binding:"required"`
+	Category     string    `json:"category" binding:"required"`
+	PurchaseDate string    `json:"purchase_date" binding:"required"`
+	Value        float64   `json:"value" binding:"required"`
+	Status       string    `json:"status" binding:"required"`
+	Location     string    `json:"location" binding:"required"`
+	SerialNumber string    `json:"serial_number"`
+	Supplier     string    `json:"supplier"`
+	ImageURL     string    `json:"image_url"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+}

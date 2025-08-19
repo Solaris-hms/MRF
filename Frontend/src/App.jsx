@@ -20,7 +20,7 @@ import AttendancePage from './pages/AttendancePage';
 import EmployeePage from './pages/EmployeePage';
 import AssetManagementPage from './pages/AssetManagementPage';
 // --- THIS IS THE NEW IMPORT ---
-import ImageLogPage from './pages/ImageLogPage';
+
 
 
 const ProtectedRoute = () => {
@@ -114,8 +114,7 @@ function App() {
             <Route path="/attendance" element={<AttendancePage />} />
             <Route path="/employees" element={<EmployeePage />} />
             <Route path="/assets" element={<AssetManagementPage />} />
-            {/* --- THIS IS THE NEW ROUTE --- */}
-            <Route path="/image-log" element={<ImageLogPage />} />
+
         </Route>
       </Route>
     </Routes>

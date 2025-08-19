@@ -99,3 +99,22 @@ export const getAttendance = (month) => { // month is 'YYYY-MM'
 export const saveAttendance = (date, records) => { // date is 'YYYY-MM-DD'
     return api.post('/operations/attendance', { date, records });
 };
+export const getAssets = () => {
+    return api.get('/operations/assets');
+};
+export const createAsset = (assetData) => {
+    return api.post('/operations/assets', assetData);
+};
+export const updateAsset = (id, assetData) => {
+    return api.put(`/operations/assets/${id}`, assetData);
+};
+export const deleteAsset = (id) => {
+    return api.delete(`/operations/assets/${id}`);
+};
+export const uploadAssetImage = (id, imageData) => {
+    return api.post(`/operations/assets/${id}/image`, imageData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+};

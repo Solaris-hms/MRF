@@ -7,6 +7,8 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/joho/godotenv v1.5.1
+	// --- THIS IS THE NEW LINE ---
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 
 	golang.org/x/crypto v0.40.0
 )
 

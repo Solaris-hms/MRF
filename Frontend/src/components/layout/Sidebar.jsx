@@ -44,8 +44,6 @@ const Sidebar = ({ setSidebarOpen }) => {
         { name: 'Attendance', path: '/attendance' },
         { name: 'Employees', path: '/employees' },
         { name: 'Asset Management', path: '/assets' },
-        // --- THIS IS THE NEW LINK ---
-        { name: 'Image Log', path: '/image-log' },
       ]
     },
     {

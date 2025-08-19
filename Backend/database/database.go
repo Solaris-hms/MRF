@@ -744,3 +744,62 @@ func (db *DB) SaveMonthlyAttendance(dateStr string, records []models.AttendanceR
 	}
 	return tx.Commit(context.Background())
 }
+
+func (db *DB) CreateAsset(asset *models.Asset) (*models.Asset, error) {
+	query := `
+		INSERT INTO assets (id, name, category, purchase_date, value, status, location, serial_number, supplier, image_url)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		RETURNING id`
+	var assetID string
+	err := db.pool.QueryRow(context.Background(), query,
+		asset.ID, asset.Name, asset.Category, asset.PurchaseDate, asset.Value, asset.Status, asset.Location, asset.SerialNumber, asset.Supplier, asset.ImageURL,
+	).Scan(&assetID)
+	if err != nil {
+		return nil, err
+	}
+	asset.ID = assetID
+	return asset, nil
+}
+
+func (db *DB) GetAllAssets() ([]models.Asset, error) {
+	query := `
+		SELECT 
+			id, name, category, purchase_date::text, value, status, 
+			location, serial_number, supplier, image_url, created_at, updated_at 
+		FROM assets 
+		ORDER BY created_at DESC`
+
+	rows, err := db.pool.Query(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var assets []models.Asset
+	for rows.Next() {
+		var asset models.Asset
+		if err := rows.Scan(
+			&asset.ID, &asset.Name, &asset.Category, &asset.PurchaseDate, &asset.Value,
+			&asset.Status, &asset.Location, &asset.SerialNumber, &asset.Supplier,
+			&asset.ImageURL, &asset.CreatedAt, &asset.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		assets = append(assets, asset)
+	}
+	return assets, nil
+}
+func (db *DB) UpdateAsset(asset *models.Asset) error {
+	query := `
+		UPDATE assets
+		SET name = $1, category = $2, purchase_date = $3, value = $4, status = $5, location = $6, serial_number = $7, supplier = $8, image_url = $9, updated_at = CURRENT_TIMESTAMP
+		WHERE id = $10`
+	_, err := db.pool.Exec(context.Background(), query,
+		asset.Name, asset.Category, asset.PurchaseDate, asset.Value, asset.Status, asset.Location, asset.SerialNumber, asset.Supplier, asset.ImageURL, asset.ID)
+	return err
+}
+
+func (db *DB) DeleteAsset(assetID string) error {
+	query := `DELETE FROM assets WHERE id = $1`
+	_, err := db.pool.Exec(context.Background(), query, assetID)
+	return err
+}

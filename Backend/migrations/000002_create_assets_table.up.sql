@@ -7,6 +7,9 @@ CREATE TABLE IF NOT EXISTS assets (
     purchase_date DATE,
     value NUMERIC(12, 2),
     status VARCHAR(50),
+    location VARCHAR(255),
+    serial_number VARCHAR(255),
+    supplier VARCHAR(255),
     image_url VARCHAR(255),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()

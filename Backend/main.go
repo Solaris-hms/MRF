@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log"
+	"log" // --- NEW IMPORT ---
 	"os"
 
 	"github.com/gin-contrib/cors"
@@ -21,6 +21,13 @@ func main() {
 	jwtSecret := os.Getenv("JWT_SECRET_KEY")
 	h := handlers.New(db, jwtSecret)
 	r := gin.Default()
+
+	// --- THIS IS THE FIX ---
+	// Set the max multipart memory to 100 MB. This needs to be done before setting up routes.
+	// 100 << 20 is equivalent to 100 * 1024 * 1024 (100 MB).
+	r.MaxMultipartMemory = 100 << 20
+
+	r.Static("/uploads", "./uploads")
 
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"http://localhost:5173"}
@@ -77,6 +84,11 @@ func main() {
 		ops.DELETE("/employees/:id", h.DeleteEmployee)
 		ops.GET("/attendance", h.GetAttendance)
 		ops.POST("/attendance", h.SaveAttendance)
+		ops.POST("/assets", h.CreateAsset)
+		ops.GET("/assets", h.GetAssets)
+		ops.PUT("/assets/:id", h.UpdateAsset)
+		ops.DELETE("/assets/:id", h.DeleteAsset)
+		ops.POST("/assets/:id/image", h.UploadAssetImage)
 	}
 
 	log.Println("Server starting on port 8080...")

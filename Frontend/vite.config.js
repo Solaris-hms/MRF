@@ -6,12 +6,17 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig({
   plugins: [react(), tailwindcss()],
 
-  // --- THIS IS THE ADDED SECTION ---
-  // It tells the Vite development server to forward any requests
-  // that start with "/api" to your Go backend server.
   server: {
     proxy: {
+      // This rule forwards /api/... requests to your backend
       '/api': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+        secure: false,
+      },
+      // --- THIS IS THE ADDED RULE ---
+      // This new rule forwards /uploads/... requests to your backend
+      '/uploads': {
         target: 'http://localhost:8080',
         changeOrigin: true,
         secure: false,
