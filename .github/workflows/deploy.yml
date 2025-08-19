@@ -30,9 +30,8 @@ jobs:
         with:
           node-version: '20'
       - name: Install Frontend Dependencies & Build
-        # --- THIS IS THE FIX ---
-        # Removed the "cd src" line. These commands run from the repository root.
         run: |
+          cd Frontend
           npm install
           npm run build
 
@@ -43,9 +42,7 @@ jobs:
           host: ${{ secrets.LIGHTSAIL_HOST }}
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
-          # --- THIS IS THE FIX ---
-          # Corrected the source path for the frontend build from "src/dist" to "dist"
-          source: "Backend/my-go-app,Backend/migrations,dist"
+          source: "Backend/my-go-app,Backend/migrations,Frontend/dist"
           target: "~/MRF_DEPLOY"
           strip_components: 1
 
