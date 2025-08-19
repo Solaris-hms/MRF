@@ -10,9 +10,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # Step 1: Checkout the repository code
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      # Step 2: Build the Go backend
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
@@ -22,6 +24,7 @@ jobs:
           cd Backend
           go build -o my-go-app main.go
 
+      # Step 3: Build the React frontend
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -32,31 +35,36 @@ jobs:
           npm install
           npm run build
 
-      # The change is in the 'script' section below
-      - name: Deploy to Lightsail and Activate
+      # Step 4: Securely COPY the built files to the server
+      - name: Copy Files via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.LIGHTSAIL_HOST }}
+          username: ${{ secrets.LIGHTSAIL_USER }}
+          key: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
+          source: "Backend/my-go-app,Frontend/dist"
+          target: "~/MRF_DEPLOY"
+          strip_components: 1
+
+      # Step 5: Run activation script on the server
+      - name: Activate New Version
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.LIGHTSAIL_HOST }}
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
           script: |
-            # --- THIS IS THE NEW DEBUGGING STEP ---
-            # Let's see what files the ssh-action actually copied to the server's home directory.
-            echo "--- Listing files in the home directory after copy ---"
-            ls -lA ~
-            echo "----------------------------------------------------"
-            
             echo "Stopping services..."
             pm2 stop go-api || true
             
             echo "Deploying new backend executable..."
-            mv ~/my-go-app ~/MRF/Backend/my-go-app
+            # Note: The source path has changed to our new deploy directory
+            mv ~/MRF_DEPLOY/my-go-app ~/MRF/Backend/my-go-app
             chmod +x ~/MRF/Backend/my-go-app
             
             echo "Deploying new frontend files..."
             sudo rm -rf /var/www/my-react-app/*
-            # We are now moving from the 'dist' directory which should be in the home folder
-            sudo mv ~/dist/* /var/www/my-react-app/
+            sudo mv ~/MRF_DEPLOY/dist/* /var/www/my-react-app/
             
             echo "Setting web directory permissions..."
             sudo chown -R www-data:www-data /var/www/my-react-app
@@ -70,5 +78,8 @@ jobs:
             cd ~/MRF/Backend
             pm2 restart go-api --update-env
             sudo systemctl restart nginx
+            
+            echo "Cleaning up..."
+            rm -rf ~/MRF_DEPLOY
             
             echo ">>> Deployment Successful!"
