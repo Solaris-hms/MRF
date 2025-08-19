@@ -35,14 +35,14 @@ jobs:
           npm install
           npm run build
 
-      # Step 4: Securely COPY the built files to the server
+      # Step 4: Securely COPY the built files and migrations to the server
       - name: Copy Files via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.LIGHTSAIL_HOST }}
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
-          source: "Backend/my-go-app,Frontend/dist"
+          source: "Backend/my-go-app,Backend/migrations,Frontend/dist"
           target: "~/MRF_DEPLOY"
           strip_components: 1
 
@@ -54,11 +54,27 @@ jobs:
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
           script: |
+            # --- THIS IS THE NEW MIGRATION STEP ---
+            echo "Running database migrations..."
+            # First, check if migrate tool is installed, and install it if not
+            if ! command -v migrate &> /dev/null
+            then
+                echo "migrate could not be found, installing..."
+                curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.1/migrate.linux-amd64.tar.gz | tar xvz
+                sudo mv migrate /usr/local/bin/migrate
+            fi
+            
+            # Construct the database URL from secrets for the migrate command
+            DB_URL="postgres://myapp_user:${{ secrets.DB_PASSWORD }}@localhost:5432/myapp_db?sslmode=disable"
+            
+            # Run the migrations. The tool automatically applies only the new ones.
+            # The -path points to the migrations folder we just copied.
+            migrate -path ~/MRF_DEPLOY/migrations -database "$DB_URL" up
+
             echo "Stopping services..."
             pm2 stop go-api || true
             
             echo "Deploying new backend executable..."
-            # Note: The source path has changed to our new deploy directory
             mv ~/MRF_DEPLOY/my-go-app ~/MRF/Backend/my-go-app
             chmod +x ~/MRF/Backend/my-go-app
             
