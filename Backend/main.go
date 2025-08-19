@@ -1,7 +1,7 @@
 package main
 
 import (
-	"log" // --- NEW IMPORT ---
+	"log"
 	"os"
 
 	"github.com/gin-contrib/cors"
@@ -22,10 +22,7 @@ func main() {
 	h := handlers.New(db, jwtSecret)
 	r := gin.Default()
 
-	// --- THIS IS THE FIX ---
-	// Set the max multipart memory to 100 MB. This needs to be done before setting up routes.
-	// 100 << 20 is equivalent to 100 * 1024 * 1024 (100 MB).
-	r.MaxMultipartMemory = 100 << 20
+	r.MaxMultipartMemory = 100 << 20 // 100 MB
 
 	r.Static("/uploads", "./uploads")
 
@@ -77,18 +74,21 @@ func main() {
 		ops.GET("/sales", h.GetMaterialSales)
 		ops.POST("/sales", h.CreateMaterialSale)
 
-		// --- NEW EMPLOYEE AND ATTENDANCE ROUTES ---
 		ops.POST("/employees", h.CreateEmployee)
 		ops.GET("/employees", h.GetEmployees)
 		ops.PUT("/employees/:id", h.UpdateEmployee)
 		ops.DELETE("/employees/:id", h.DeleteEmployee)
+
 		ops.GET("/attendance", h.GetAttendance)
 		ops.POST("/attendance", h.SaveAttendance)
-		ops.POST("/assets", h.CreateAsset)
-		ops.GET("/assets", h.GetAssets)
-		ops.PUT("/assets/:id", h.UpdateAsset)
-		ops.DELETE("/assets/:id", h.DeleteAsset)
-		ops.POST("/assets/:id/image", h.UploadAssetImage)
+
+		// --- THIS IS THE FIX ---
+		// Added the specific permission middleware for each asset route.
+		ops.POST("/assets", middleware.PermissionMiddleware("create:assets"), h.CreateAsset)
+		ops.GET("/assets", middleware.PermissionMiddleware("view:assets"), h.GetAssets)
+		ops.PUT("/assets/:id", middleware.PermissionMiddleware("edit:assets"), h.UpdateAsset)
+		ops.DELETE("/assets/:id", middleware.PermissionMiddleware("delete:assets"), h.DeleteAsset)
+		ops.POST("/assets/:id/image", middleware.PermissionMiddleware("edit:assets"), h.UploadAssetImage)
 	}
 
 	log.Println("Server starting on port 8080...")
