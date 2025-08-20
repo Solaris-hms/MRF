@@ -210,15 +210,15 @@ type SaveAttendanceRequest struct {
 }
 type Asset struct {
 	ID           string    `json:"id"`
-	Name         string    `json:"name" binding:"required"`
-	Category     string    `json:"category" binding:"required"`
-	PurchaseDate string    `json:"purchase_date" binding:"required"`
-	Value        float64   `json:"value" binding:"required"`
-	Status       string    `json:"status" binding:"required"`
-	Location     string    `json:"location" binding:"required"`
-	SerialNumber string    `json:"serial_number"`
-	Supplier     string    `json:"supplier"`
-	ImageURL     string    `json:"image_url"`
+	Name         string    `json:"name"`
+	Category     *string   `json:"category"`
+	PurchaseDate *string   `json:"purchase_date"`
+	Value        *float64  `json:"value"`
+	Status       *string   `json:"status"`
+	Location     *string   `json:"location"`
+	SerialNumber *string   `json:"serial_number"`
+	Supplier     *string   `json:"supplier"`
+	ImageURL     *string   `json:"image_url"`
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }

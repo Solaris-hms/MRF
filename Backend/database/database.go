@@ -762,24 +762,11 @@ func (db *DB) CreateAsset(asset *models.Asset) (*models.Asset, error) {
 }
 
 func (db *DB) GetAllAssets() ([]models.Asset, error) {
-	// --- THIS IS THE FIX ---
-	// We use COALESCE on all nullable string columns to replace any NULL
-	// values with an empty string (''). This prevents the Scan function from
-	// failing when it encounters optional data.
 	query := `
 		SELECT
-			id,
-			COALESCE(name, ''),
-			COALESCE(category, ''),
-			COALESCE(purchase_date::text, ''),
-			COALESCE(value, 0.0),
-			COALESCE(status, ''),
-			COALESCE(location, ''),
-			COALESCE(serial_number, ''),
-			COALESCE(supplier, ''),
-			COALESCE(image_url, ''),
-			created_at,
-			updated_at
+			id, name, category, purchase_date, value, status,
+			location, serial_number, supplier, image_url,
+			created_at, updated_at
 		FROM assets
 		ORDER BY created_at DESC`
 
@@ -791,16 +778,29 @@ func (db *DB) GetAllAssets() ([]models.Asset, error) {
 	var assets []models.Asset
 	for rows.Next() {
 		var asset models.Asset
+		// --- THIS IS THE FIX ---
+		// Use a pointer to time.Time, which is the correct way
+		// for pgx/v5 to handle nullable date/timestamp columns.
+		var purchaseDate *time.Time
+
 		if err := rows.Scan(
-			&asset.ID, &asset.Name, &asset.Category, &asset.PurchaseDate, &asset.Value,
+			&asset.ID, &asset.Name, &asset.Category, &purchaseDate, &asset.Value,
 			&asset.Status, &asset.Location, &asset.SerialNumber, &asset.Supplier,
 			&asset.ImageURL, &asset.CreatedAt, &asset.UpdatedAt,
 		); err != nil {
-			return nil, err // This was the point of failure
+			return nil, err
 		}
+
+		// Manually convert the date to the string format the frontend needs
+		if purchaseDate != nil {
+			dateStr := purchaseDate.Format("2006-01-02")
+			asset.PurchaseDate = &dateStr
+		}
+
 		assets = append(assets, asset)
 	}
 	return assets, nil
+
 }
 func (db *DB) UpdateAsset(asset *models.Asset) error {
 	query := `
