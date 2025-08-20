@@ -46,7 +46,14 @@ func (db *DB) GetUserByEmail(email string) (*models.User, error) {
 	var user models.User
 	query := `SELECT id, full_name, email, password_hash, is_approved, created_at FROM users WHERE email = $1`
 	err := db.pool.QueryRow(context.Background(), query, email).Scan(&user.ID, &user.FullName, &user.Email, &user.PasswordHash, &user.IsApproved, &user.CreatedAt)
+
+	// --- THIS IS THE CRUCIAL FIX ---
+	// This handles the "user not found" case without crashing the application.
 	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, err // Return the "not found" error, which is expected.
+		}
+		log.Printf("Unexpected error getting user by email: %v", err) // Log other errors
 		return nil, err
 	}
 	return &user, nil
