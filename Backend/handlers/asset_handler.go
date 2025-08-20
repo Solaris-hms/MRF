@@ -1,18 +1,17 @@
+// Backend/handlers/asset_handler.go
+
 package handlers
 
 import (
-	"bytes"
 	"fmt"
-	"image"
-	"image/jpeg"
-	_ "image/png" // --- THIS IS THE FIX ---
+	_ "image/png"
+	"io" // Import the 'io' package
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/nfnt/resize"
 	"github.com/solaris-hms/mrf-backend/models"
 )
 
@@ -75,6 +74,7 @@ func (h *Handlers) DeleteAsset(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Asset deleted successfully"})
 }
 
+// --- THIS FUNCTION IS NOW FIXED TO PREVENT CRASHES ---
 func (h *Handlers) UploadAssetImage(c *gin.Context) {
 	const MAX_UPLOAD_SIZE = 100 * 1024 * 1024 // 100 MB
 
@@ -84,13 +84,12 @@ func (h *Handlers) UploadAssetImage(c *gin.Context) {
 		return
 	}
 
-	// 1. Validate file size
 	if fileHeader.Size > MAX_UPLOAD_SIZE {
 		c.JSON(http.StatusRequestEntityTooLarge, gin.H{"error": "File is too large. Maximum size is 100MB."})
 		return
 	}
 
-	// 2. Open the uploaded file
+	// Open the uploaded file
 	file, err := fileHeader.Open()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not open uploaded file."})
@@ -98,29 +97,16 @@ func (h *Handlers) UploadAssetImage(c *gin.Context) {
 	}
 	defer file.Close()
 
-	// 3. Decode the image
-	img, _, err := image.Decode(file)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid image format. Only JPEG and PNG are supported."})
-		return
-	}
+	// --- SIMPLIFIED SAVE LOGIC ---
+	// We no longer decode, resize, and re-encode. We just save the file directly.
 
-	// 4. Resize and compress the image
-	resizedImg := resize.Thumbnail(1920, 1080, img, resize.Lanczos3)
-
-	buf := new(bytes.Buffer)
-
-	err = jpeg.Encode(buf, resizedImg, &jpeg.Options{Quality: 75})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to compress image."})
-		return
-	}
-
-	// 5. Save the new, compressed image
-	originalFilename := strings.TrimSuffix(fileHeader.Filename, filepath.Ext(fileHeader.Filename))
-	newFilename := fmt.Sprintf("asset_%s_%s.jpg", c.Param("id"), originalFilename)
+	// 1. Create a unique filename
+	extension := filepath.Ext(fileHeader.Filename)
+	originalFilename := strings.TrimSuffix(fileHeader.Filename, extension)
+	newFilename := fmt.Sprintf("asset_%s_%s%s", c.Param("id"), originalFilename, extension)
 	dst := filepath.Join("uploads", newFilename)
 
+	// 2. Create a new file on the server
 	outFile, err := os.Create(dst)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create image file on server."})
@@ -128,13 +114,14 @@ func (h *Handlers) UploadAssetImage(c *gin.Context) {
 	}
 	defer outFile.Close()
 
-	_, err = outFile.Write(buf.Bytes())
+	// 3. Copy the uploaded file's content to the new file
+	_, err = io.Copy(outFile, file)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save compressed image."})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save image."})
 		return
 	}
 
-	// 6. Return the URL to the frontend
+	// 4. Return the URL
 	imageURL := "/uploads/" + newFilename
 	c.JSON(http.StatusOK, gin.H{"imageUrl": imageURL})
 }
