@@ -43,7 +43,7 @@ const Sidebar = ({ setSidebarOpen }) => {
         { name: 'Inventory', path: '/inventory' },
         { name: 'Attendance', path: '/attendance' },
         { name: 'Employees', path: '/employees' },
-        { name: 'Asset Management', path: '/assets' },
+        { name: 'Asset Management.', path: '/assets' },
       ]
     },
     {
