@@ -1,9 +1,7 @@
-// Backend/handlers/auth_handler.go
-
 package handlers
 
 import (
-	"errors" // REQUIRED IMPORT
+	"errors"
 	"net/http"
 	"time"
 
@@ -11,11 +9,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/jackc/pgx/v5/pgconn" // REQUIRED IMPORT
+	"github.com/jackc/pgx/v5/pgconn"
 	"golang.org/x/crypto/bcrypt"
 )
 
-// THIS IS THE CORRECTED, ROBUST RegisterUser FUNCTION
 func (h *Handlers) RegisterUser(c *gin.Context) {
 	var req models.RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -33,13 +30,11 @@ func (h *Handlers) RegisterUser(c *gin.Context) {
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
-			// Check for unique violation error code "23505"
 			if pgErr.Code == "23505" {
 				c.JSON(http.StatusConflict, gin.H{"error": "Username or email already exists."})
 				return
 			}
 		}
-		// For any other errors, return a generic server error
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not create user"})
 		return
 	}
@@ -47,7 +42,6 @@ func (h *Handlers) RegisterUser(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Application submitted successfully. Awaiting approval."})
 }
 
-// THIS IS THE CORRECTED, ROBUST LoginUser FUNCTION
 func (h *Handlers) LoginUser(c *gin.Context) {
 	var req models.LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -57,7 +51,6 @@ func (h *Handlers) LoginUser(c *gin.Context) {
 
 	user, err := h.DB.GetUserByEmail(req.Email)
 	if err != nil {
-		// This now correctly handles the "user not found" error from the database function
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
 		return
 	}
