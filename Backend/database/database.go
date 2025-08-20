@@ -754,18 +754,22 @@ func (db *DB) SaveMonthlyAttendance(dateStr string, records []models.AttendanceR
 
 func (db *DB) CreateAsset(asset *models.Asset) (*models.Asset, error) {
 	query := `
-		INSERT INTO assets (id, name, category, purchase_date, value, status, location, serial_number, supplier, image_url)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-		RETURNING id`
-	var assetID string
+        INSERT INTO assets (id, name, category, purchase_date, value, status, location, serial_number, supplier, image_url)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        RETURNING id, name, category, purchase_date::text, value, status, location, serial_number, supplier, image_url, created_at, updated_at`
+
+	var createdAsset models.Asset
 	err := db.pool.QueryRow(context.Background(), query,
 		asset.ID, asset.Name, asset.Category, asset.PurchaseDate, asset.Value, asset.Status, asset.Location, asset.SerialNumber, asset.Supplier, asset.ImageURL,
-	).Scan(&assetID)
+	).Scan(
+		&createdAsset.ID, &createdAsset.Name, &createdAsset.Category, &createdAsset.PurchaseDate, &createdAsset.Value,
+		&createdAsset.Status, &createdAsset.Location, &createdAsset.SerialNumber, &createdAsset.Supplier,
+		&createdAsset.ImageURL, &createdAsset.CreatedAt, &createdAsset.UpdatedAt,
+	)
 	if err != nil {
 		return nil, err
 	}
-	asset.ID = assetID
-	return asset, nil
+	return &createdAsset, nil
 }
 
 // --- THIS IS THE FINAL, CORRECTED FUNCTION ---
