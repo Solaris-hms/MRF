@@ -35,7 +35,7 @@ func main() {
 	// --- THIS IS THE CORS FIX ---
 	// This more permissive CORS policy will work for development and production.
 	corsConfig := cors.DefaultConfig()
-	corsConfig.AllowOrigins = []string{"http://localhost:5173", "http://13.234.119.98"} // Add your server's IP
+	corsConfig.AllowOrigins = []string{"http://localhost:5173", "http://13.234.119.98"}
 	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
 	corsConfig.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
 	r.Use(cors.New(corsConfig))

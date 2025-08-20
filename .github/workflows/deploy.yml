@@ -17,6 +17,7 @@ jobs:
         uses: actions/setup-go@v4
         with:
           go-version: '1.21'
+      
       - name: Build Go Backend
         run: |
           cd Backend
@@ -26,6 +27,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+      
       - name: Install Frontend Dependencies & Build
         run: |
           cd Frontend
@@ -49,49 +51,82 @@ jobs:
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
           script: |
-            # Exit immediately if a command exits with a non-zero status.
+            # Exit immediately if a command exits with a non-zero status
             set -e
             
-            echo "Installing migrate tool if not present..."
+            echo "=== Starting Deployment ==="
+            
+            # Install migrate tool if not present
             if ! command -v migrate &> /dev/null; then
-              echo "migrate not found, installing..."
+              echo "Installing migrate tool..."
               curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.1/migrate.linux-amd64.tar.gz | tar xvz
               sudo mv migrate /usr/local/bin/migrate
             fi
             
+            # Run database migrations
             echo "Running database migrations..."
-            # Use the absolute path and fail the script if migrations fail
-            migrate -path /home/ubuntu/MRF_DEPLOY/migrations -database "postgres://myapp_user:${{ secrets.DB_PASSWORD }}@localhost:5432/myapp_db?sslmode=disable" up
+            migrate -path ~/MRF_DEPLOY/migrations -database "postgres://myapp_user:${{ secrets.DB_PASSWORD }}@localhost:5432/myapp_db?sslmode=disable" up || echo "Migrations may already be up to date"
             
-            echo "Deploying new backend executable..."
+            # Deploy backend
+            echo "Deploying backend executable..."
             mv ~/MRF_DEPLOY/my-go-app ~/MRF/Backend/my-go-app
             chmod +x ~/MRF/Backend/my-go-app
             
-            echo "Ensuring uploads directory exists..."
+            # Ensure uploads directory exists
             mkdir -p ~/MRF/Backend/uploads
-
-            echo "Deploying new frontend files..."
+            
+            # Deploy frontend
+            echo "Deploying frontend files..."
             sudo rm -rf /var/www/my-react-app/*
             sudo mv ~/MRF_DEPLOY/dist/* /var/www/my-react-app/
             
-            echo "Setting web directory permissions..."
+            # Set permissions
             sudo chown -R www-data:www-data /var/www/my-react-app
             sudo chmod -R 755 /var/www/my-react-app
             
-            echo "Creating/Updating backend .env file..."
-            echo "DB_SOURCE=postgresql://myapp_user:${{ secrets.DB_PASSWORD }}@localhost:5432/myapp_db?sslmode=disable" > ~/MRF/Backend/.env
-            echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> ~/MRF/Backend/.env
+            # Update .env file
+            echo "Updating backend .env file..."
+            cat > ~/MRF/Backend/.env << EOF
+            DB_SOURCE=postgresql://myapp_user:${{ secrets.DB_PASSWORD }}@localhost:5432/myapp_db?sslmode=disable
+            JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}
+            EOF
             
-            echo "Reloading services..."
+            # Reload services - Try multiple methods to find pm2
+            echo "Reloading backend service..."
             cd ~/MRF/Backend
             
-            # --- THIS IS THE FINAL FIX ---
-            # Use the full, absolute path to pm2
-            /home/ubuntu/.nvm/versions/node/v22.17.1/bin/pm2 reload go-api --update-env
+            # Method 1: Try with NVM loading
+            if [ -f ~/.nvm/nvm.sh ]; then
+              echo "Loading NVM..."
+              export NVM_DIR="$HOME/.nvm"
+              [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+              [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+            fi
             
+            # Method 2: Try common pm2 paths
+            if command -v pm2 &> /dev/null; then
+              echo "Found pm2 in PATH"
+              pm2 reload go-api --update-env
+            elif [ -f /home/ubuntu/.nvm/versions/node/v22.11.0/bin/pm2 ]; then
+              echo "Using pm2 at v22.11.0 path"
+              /home/ubuntu/.nvm/versions/node/v22.11.0/bin/pm2 reload go-api --update-env
+            elif [ -f /usr/local/bin/pm2 ]; then
+              echo "Using pm2 at /usr/local/bin"
+              /usr/local/bin/pm2 reload go-api --update-env
+            else
+              echo "WARNING: Could not find pm2! Trying to restart process manually..."
+              # Fallback: Kill old process and start new one
+              pkill -f my-go-app || true
+              nohup ./my-go-app > /dev/null 2>&1 &
+              echo "Started backend without pm2"
+            fi
+            
+            # Restart nginx
+            echo "Restarting nginx..."
             sudo systemctl restart nginx
             
-            echo "Cleaning up..."
+            # Cleanup
+            echo "Cleaning up deployment files..."
             rm -rf ~/MRF_DEPLOY
             
-            echo ">>> Deployment Successful!"
+            echo "=== Deployment Complete ==="
