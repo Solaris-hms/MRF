@@ -762,11 +762,25 @@ func (db *DB) CreateAsset(asset *models.Asset) (*models.Asset, error) {
 }
 
 func (db *DB) GetAllAssets() ([]models.Asset, error) {
+	// --- THIS IS THE FIX ---
+	// We use COALESCE on all nullable string columns to replace any NULL
+	// values with an empty string (''). This prevents the Scan function from
+	// failing when it encounters optional data.
 	query := `
-		SELECT 
-			id, name, category, purchase_date::text, value, status, 
-			location, serial_number, supplier, image_url, created_at, updated_at 
-		FROM assets 
+		SELECT
+			id,
+			COALESCE(name, ''),
+			COALESCE(category, ''),
+			COALESCE(purchase_date::text, ''),
+			COALESCE(value, 0.0),
+			COALESCE(status, ''),
+			COALESCE(location, ''),
+			COALESCE(serial_number, ''),
+			COALESCE(supplier, ''),
+			COALESCE(image_url, ''),
+			created_at,
+			updated_at
+		FROM assets
 		ORDER BY created_at DESC`
 
 	rows, err := db.pool.Query(context.Background(), query)
@@ -782,7 +796,7 @@ func (db *DB) GetAllAssets() ([]models.Asset, error) {
 			&asset.Status, &asset.Location, &asset.SerialNumber, &asset.Supplier,
 			&asset.ImageURL, &asset.CreatedAt, &asset.UpdatedAt,
 		); err != nil {
-			return nil, err
+			return nil, err // This was the point of failure
 		}
 		assets = append(assets, asset)
 	}
