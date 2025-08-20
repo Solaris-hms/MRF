@@ -131,3 +131,8 @@ CREATE TABLE IF NOT EXISTS cashbook_transactions (
     created_by_user_id INTEGER REFERENCES users(id),
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+INSERT INTO permissions (action) VALUES
+    ('view:assets'),
+    ('create:assets'),
+    ('edit:assets'),
+    ('delete:assets');

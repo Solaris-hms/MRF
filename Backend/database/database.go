@@ -803,3 +803,43 @@ func (db *DB) DeleteAsset(assetID string) error {
 	_, err := db.pool.Exec(context.Background(), query, assetID)
 	return err
 }
+func (db *DB) SyncPermissions(permissions []string) error {
+	// 1. Get all permissions currently in the database
+	rows, err := db.pool.Query(context.Background(), "SELECT action FROM permissions")
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	existingPerms := make(map[string]bool)
+	for rows.Next() {
+		var action string
+		if err := rows.Scan(&action); err != nil {
+			return err
+		}
+		existingPerms[action] = true
+	}
+
+	// 2. Insert any permissions that are in our master list but not in the database
+	tx, err := db.pool.Begin(context.Background())
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+
+	stmt, err := tx.Prepare(context.Background(), "insert_perm", "INSERT INTO permissions (action) VALUES ($1)")
+	if err != nil {
+		return err
+	}
+
+	for _, p := range permissions {
+		if !existingPerms[p] {
+			log.Printf("Adding new permission to database: %s\n", p)
+			if _, err := tx.Exec(context.Background(), stmt.Name, p); err != nil {
+				return err
+			}
+		}
+	}
+
+	return tx.Commit(context.Background())
+}
