@@ -109,7 +109,7 @@ jobs:
               pm2 reload go-api --update-env
             elif [ -f /home/ubuntu/.nvm/versions/node/v22.11.0/bin/pm2 ]; then
               echo "Using pm2 at v22.11.0 path"
-              /home/ubuntu/.nvm/versions/node/v22.11.0/bin/pm2 reload go-api --update-env
+              /home/ubuntu/.nvm/versions/node/v22.17.1/bin/pm2 reload go-api --update-env
             elif [ -f /usr/local/bin/pm2 ]; then
               echo "Using pm2 at /usr/local/bin"
               /usr/local/bin/pm2 reload go-api --update-env
