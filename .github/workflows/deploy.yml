@@ -90,7 +90,7 @@ jobs:
             
             echo "Restarting services..."
             cd ~/MRF/Backend
-            pm2 restart go-api --update-env
+            pm2 reload go-api --update-env
             sudo systemctl restart nginx
             
             echo "Cleaning up..."
