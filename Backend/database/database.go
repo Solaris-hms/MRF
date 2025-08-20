@@ -763,7 +763,6 @@ func (db *DB) CreateAsset(asset *models.Asset) (*models.Asset, error) {
 
 // --- THIS IS THE FINAL, CORRECTED FUNCTION ---
 func (db *DB) GetAllAssets() ([]models.Asset, error) {
-	// This query now casts the date to text directly, which is simpler and safer.
 	query := `
 		SELECT
 			id, name, category, purchase_date::text, value, status,
@@ -781,7 +780,6 @@ func (db *DB) GetAllAssets() ([]models.Asset, error) {
 	var assets []models.Asset
 	for rows.Next() {
 		var asset models.Asset
-		// Scanning directly into the struct's pointer fields is the correct approach.
 		if err := rows.Scan(
 			&asset.ID, &asset.Name, &asset.Category, &asset.PurchaseDate, &asset.Value,
 			&asset.Status, &asset.Location, &asset.SerialNumber, &asset.Supplier,
@@ -793,7 +791,6 @@ func (db *DB) GetAllAssets() ([]models.Asset, error) {
 	}
 	return assets, nil
 }
-
 func (db *DB) UpdateAsset(asset *models.Asset) error {
 	query := `
 		UPDATE assets

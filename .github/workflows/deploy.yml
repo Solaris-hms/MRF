@@ -84,7 +84,11 @@ jobs:
             
             echo "Reloading services..."
             cd ~/MRF/Backend
-            pm2 reload go-api --update-env
+            
+            # --- THIS IS THE FINAL FIX ---
+            # Use the full, absolute path to pm2
+            /home/ubuntu/.nvm/versions/node/v22.17.1/bin/pm2 reload go-api --update-env
+            
             sudo systemctl restart nginx
             
             echo "Cleaning up..."
