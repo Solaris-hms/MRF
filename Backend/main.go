@@ -7,6 +7,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/solaris-hms/mrf-backend/config"
 	"github.com/solaris-hms/mrf-backend/database"
 	"github.com/solaris-hms/mrf-backend/handlers"
 	"github.com/solaris-hms/mrf-backend/middleware"
@@ -18,6 +19,11 @@ func main() {
 	}
 	db := database.New()
 	defer db.Close()
+
+	if err := db.SyncPermissions(config.AllPermissions); err != nil {
+		log.Fatalf("Failed to sync permissions: %v", err)
+	}
+
 	jwtSecret := os.Getenv("JWT_SECRET_KEY")
 	h := handlers.New(db, jwtSecret)
 	r := gin.Default()
@@ -26,11 +32,13 @@ func main() {
 
 	r.Static("/uploads", "./uploads")
 
-	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:5173"}
-	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
-	r.Use(cors.New(config))
+	// --- THIS IS THE CORS FIX ---
+	// This more permissive CORS policy will work for development and production.
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowOrigins = []string{"http://localhost:5173", "http://13.234.119.98"} // Add your server's IP
+	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	corsConfig.AllowHeaders = []string{"Origin", "Content-Type", "Authorization"}
+	r.Use(cors.New(corsConfig))
 
 	public := r.Group("/api/auth")
 	{
@@ -82,8 +90,6 @@ func main() {
 		ops.GET("/attendance", h.GetAttendance)
 		ops.POST("/attendance", h.SaveAttendance)
 
-		// --- THIS IS THE FIX ---
-		// Added the specific permission middleware for each asset route.
 		ops.POST("/assets", middleware.PermissionMiddleware("create:assets"), h.CreateAsset)
 		ops.GET("/assets", middleware.PermissionMiddleware("view:assets"), h.GetAssets)
 		ops.PUT("/assets/:id", middleware.PermissionMiddleware("edit:assets"), h.UpdateAsset)

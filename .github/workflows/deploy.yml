@@ -10,11 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout the repository code
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # Step 2: Build the Go backend
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
@@ -24,7 +22,6 @@ jobs:
           cd Backend
           go build -o my-go-app main.go
 
-      # Step 3: Build the React frontend
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
@@ -35,7 +32,6 @@ jobs:
           npm install
           npm run build
 
-      # Step 4: Securely COPY the built files and migrations to the server
       - name: Copy Files via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -46,7 +42,6 @@ jobs:
           target: "~/MRF_DEPLOY"
           strip_components: 1
 
-      # Step 5: Run activation script on the server
       - name: Activate New Version
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -54,20 +49,19 @@ jobs:
           username: ${{ secrets.LIGHTSAIL_USER }}
           key: ${{ secrets.LIGHTSAIL_SSH_PRIVATE_KEY }}
           script: |
-            echo "Running database migrations..."
-            if ! command -v migrate &> /dev/null
-            then
-              echo "migrate could not be found, installing..."
+            # Exit immediately if a command exits with a non-zero status.
+            set -e
+            
+            echo "Installing migrate tool if not present..."
+            if ! command -v migrate &> /dev/null; then
+              echo "migrate not found, installing..."
               curl -L https://github.com/golang-migrate/migrate/releases/download/v4.17.1/migrate.linux-amd64.tar.gz | tar xvz
               sudo mv migrate /usr/local/bin/migrate
             fi
             
-            DB_URL="postgres://myapp_user:${{ secrets.DB_PASSWORD }}@localhost:5432/myapp_db?sslmode=disable"
-            
-            migrate -path ~/MRF_DEPLOY/migrations -database "$DB_URL" up
-
-            echo "Stopping services..."
-            pm2 stop go-api || true
+            echo "Running database migrations..."
+            # Use the absolute path and fail the script if migrations fail
+            migrate -path /home/ubuntu/MRF_DEPLOY/migrations -database "postgres://myapp_user:${{ secrets.DB_PASSWORD }}@localhost:5432/myapp_db?sslmode=disable" up
             
             echo "Deploying new backend executable..."
             mv ~/MRF_DEPLOY/my-go-app ~/MRF/Backend/my-go-app
@@ -85,10 +79,10 @@ jobs:
             sudo chmod -R 755 /var/www/my-react-app
             
             echo "Creating/Updating backend .env file..."
-            echo "DB_SOURCE=postgresql://myapp_user:${{ secrets.DB_PASSWORD }}@localhost:5432/myapp_db" > ~/MRF/Backend/.env
+            echo "DB_SOURCE=postgresql://myapp_user:${{ secrets.DB_PASSWORD }}@localhost:5432/myapp_db?sslmode=disable" > ~/MRF/Backend/.env
             echo "JWT_SECRET_KEY=${{ secrets.JWT_SECRET_KEY }}" >> ~/MRF/Backend/.env
             
-            echo "Restarting services..."
+            echo "Reloading services..."
             cd ~/MRF/Backend
             pm2 reload go-api --update-env
             sudo systemctl restart nginx

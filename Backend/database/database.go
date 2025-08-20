@@ -761,10 +761,12 @@ func (db *DB) CreateAsset(asset *models.Asset) (*models.Asset, error) {
 	return asset, nil
 }
 
+// --- THIS IS THE FINAL, CORRECTED FUNCTION ---
 func (db *DB) GetAllAssets() ([]models.Asset, error) {
+	// This query now casts the date to text directly, which is simpler and safer.
 	query := `
 		SELECT
-			id, name, category, purchase_date, value, status,
+			id, name, category, purchase_date::text, value, status,
 			location, serial_number, supplier, image_url,
 			created_at, updated_at
 		FROM assets
@@ -775,33 +777,23 @@ func (db *DB) GetAllAssets() ([]models.Asset, error) {
 		return nil, err
 	}
 	defer rows.Close()
+
 	var assets []models.Asset
 	for rows.Next() {
 		var asset models.Asset
-		// --- THIS IS THE FIX ---
-		// Use a pointer to time.Time, which is the correct way
-		// for pgx/v5 to handle nullable date/timestamp columns.
-		var purchaseDate *time.Time
-
+		// Scanning directly into the struct's pointer fields is the correct approach.
 		if err := rows.Scan(
-			&asset.ID, &asset.Name, &asset.Category, &purchaseDate, &asset.Value,
+			&asset.ID, &asset.Name, &asset.Category, &asset.PurchaseDate, &asset.Value,
 			&asset.Status, &asset.Location, &asset.SerialNumber, &asset.Supplier,
 			&asset.ImageURL, &asset.CreatedAt, &asset.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}
-
-		// Manually convert the date to the string format the frontend needs
-		if purchaseDate != nil {
-			dateStr := purchaseDate.Format("2006-01-02")
-			asset.PurchaseDate = &dateStr
-		}
-
 		assets = append(assets, asset)
 	}
 	return assets, nil
-
 }
+
 func (db *DB) UpdateAsset(asset *models.Asset) error {
 	query := `
 		UPDATE assets
