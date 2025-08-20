@@ -211,14 +211,14 @@ type SaveAttendanceRequest struct {
 type Asset struct {
 	ID           string    `json:"id"`
 	Name         string    `json:"name"`
-	Category     *string   `json:"category"`      // Pointer for nullable
-	PurchaseDate *string   `json:"purchase_date"` // Pointer for nullable
-	Value        *float64  `json:"value"`         // Pointer for nullable
-	Status       *string   `json:"status"`        // Pointer for nullable
-	Location     *string   `json:"location"`      // Pointer for nullable
-	SerialNumber *string   `json:"serial_number"` // Pointer for nullable
-	Supplier     *string   `json:"supplier"`      // Pointer for nullable
-	ImageURL     *string   `json:"image_url"`     // Pointer for nullable
+	Category     *string   `json:"category"`      // Must be pointer
+	PurchaseDate *string   `json:"purchase_date"` // Must be pointer
+	Value        *float64  `json:"value"`         // Must be pointer
+	Status       *string   `json:"status"`        // Must be pointer
+	Location     *string   `json:"location"`      // Must be pointer
+	SerialNumber *string   `json:"serial_number"` // Must be pointer
+	Supplier     *string   `json:"supplier"`      // Must be pointer
+	ImageURL     *string   `json:"image_url"`     // Must be pointer
 	CreatedAt    time.Time `json:"created_at"`
 	UpdatedAt    time.Time `json:"updated_at"`
 }
