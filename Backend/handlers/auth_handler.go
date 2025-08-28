@@ -84,7 +84,7 @@ func (h *Handlers) LoginUser(c *gin.Context) {
 		"full_name":   user.FullName,
 		"roles":       roles,
 		"permissions": permissions,
-		"exp":         time.Now().Add(time.Hour * 24).Unix(),
+		"exp":         time.Now().Add(time.Hour * 24 * 7).Unix(),
 	})
 
 	tokenString, err := token.SignedString([]byte(h.JWTSecret))

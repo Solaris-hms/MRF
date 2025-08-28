@@ -1,11 +1,8 @@
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
-// --- THIS IS THE FIX ---
-// The API_URL is now a relative path, just like in apiService.js.
 const API_URL = '/api/auth';
 
-// Register a new user with all fields
 const register = (fullName, username, email, designation, password) => {
     return axios.post(`${API_URL}/register`, {
         full_name: fullName,
@@ -16,7 +13,6 @@ const register = (fullName, username, email, designation, password) => {
     });
 };
 
-// Log in a user
 const login = async (email, password) => {
     const response = await axios.post(`${API_URL}/login`, {
         email,
@@ -28,19 +24,35 @@ const login = async (email, password) => {
     return response.data;
 };
 
-// Log out a user
 const logout = () => {
     localStorage.removeItem('user_token');
 };
 
-// Get the current user's token
+// Enhanced token validation
 const getCurrentToken = () => {
-    return localStorage.getItem('user_token');
+    const token = localStorage.getItem('user_token');
+    if (!token) return null;
+    
+    try {
+        const decoded = jwtDecode(token);
+        const currentTime = Date.now() / 1000;
+        
+        // Check if token is expired
+        if (decoded.exp < currentTime) {
+            console.log('Token expired, clearing storage');
+            logout(); // Clear expired token
+            return null;
+        }
+        return token;
+    } catch (error) {
+        console.error("Invalid token:", error);
+        logout(); // Clear invalid token
+        return null;
+    }
 };
 
-// Get user data from token
 const getCurrentUser = () => {
-    const token = getCurrentToken();
+    const token = getCurrentToken(); // This now checks expiry
     if (!token) {
         return null;
     }

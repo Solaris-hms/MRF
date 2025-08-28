@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 
 import Sidebar from './components/layout/Sidebar';
@@ -15,13 +15,11 @@ import SortingPage from './pages/SortingPage';
 import InventoryPage from './pages/InventoryPage';
 import CashbookPage from './pages/CashbookPage';
 import MaterialSalesPage from './pages/MaterialSalesPage';
-import authService from './services/authService';
 import AttendancePage from './pages/AttendancePage';
 import EmployeePage from './pages/EmployeePage';
 import AssetManagementPage from './pages/AssetManagementPage';
-// --- THIS IS THE NEW IMPORT ---
-
-
+import VendorRegistrationPage from './pages/VendorRegistrationPage';
+import authService from './services/authService';
 
 const ProtectedRoute = () => {
   const token = authService.getCurrentToken();
@@ -71,16 +69,32 @@ const MainLayout = () => {
 };
 
 function App() {
+  // Fixed scroll issue for number inputs
   useEffect(() => {
-    const handleWheel = (event) => {
-      if (document.activeElement.type === 'number') {
-        event.preventDefault();
+    const preventNumberChange = (e) => {
+        if (e.target.type === 'number') {
+            e.target.blur();
+        }
+    };
+    
+    document.addEventListener('wheel', preventNumberChange);
+    return () => document.removeEventListener('wheel', preventNumberChange);
+  }, []);
+
+  // Check token validity on app startup
+  useEffect(() => {
+    const checkAuthStatus = () => {
+      const token = authService.getCurrentToken();
+      const currentPath = window.location.pathname;
+      
+      // If no valid token and not already on login/register pages
+      if (!token && !['/login', '/request-access'].includes(currentPath)) {
+        console.log('No valid token found, redirecting to login');
+        window.location.href = '/login';
       }
     };
-    document.addEventListener('wheel', handleWheel, { passive: false });
-    return () => {
-      document.removeEventListener('wheel', handleWheel);
-    };
+
+    checkAuthStatus();
   }, []);
 
   return (
@@ -114,6 +128,7 @@ function App() {
             <Route path="/attendance" element={<AttendancePage />} />
             <Route path="/employees" element={<EmployeePage />} />
             <Route path="/assets" element={<AssetManagementPage />} />
+            <Route path="/vendor-registration" element={<VendorRegistrationPage />} />
 
         </Route>
       </Route>

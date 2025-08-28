@@ -752,18 +752,20 @@ func (db *DB) SaveMonthlyAttendance(dateStr string, records []models.AttendanceR
 	return tx.Commit(context.Background())
 }
 
+// Updated database functions for assets with invoice_number
+
 func (db *DB) CreateAsset(asset *models.Asset) (*models.Asset, error) {
 	query := `
-        INSERT INTO assets (id, name, category, purchase_date, value, status, location, serial_number, supplier, image_url)
+        INSERT INTO assets (id, name, category, purchase_date, value, status, location, invoice_number, supplier, image_url)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING id, name, category, purchase_date::text, value, status, location, serial_number, supplier, image_url, created_at, updated_at`
+        RETURNING id, name, category, purchase_date::text, value, status, location, invoice_number, supplier, image_url, created_at, updated_at`
 
 	var createdAsset models.Asset
 	err := db.pool.QueryRow(context.Background(), query,
-		asset.ID, asset.Name, asset.Category, asset.PurchaseDate, asset.Value, asset.Status, asset.Location, asset.SerialNumber, asset.Supplier, asset.ImageURL,
+		asset.ID, asset.Name, asset.Category, asset.PurchaseDate, asset.Value, asset.Status, asset.Location, asset.InvoiceNumber, asset.Supplier, asset.ImageURL,
 	).Scan(
 		&createdAsset.ID, &createdAsset.Name, &createdAsset.Category, &createdAsset.PurchaseDate, &createdAsset.Value,
-		&createdAsset.Status, &createdAsset.Location, &createdAsset.SerialNumber, &createdAsset.Supplier,
+		&createdAsset.Status, &createdAsset.Location, &createdAsset.InvoiceNumber, &createdAsset.Supplier,
 		&createdAsset.ImageURL, &createdAsset.CreatedAt, &createdAsset.UpdatedAt,
 	)
 	if err != nil {
@@ -772,12 +774,11 @@ func (db *DB) CreateAsset(asset *models.Asset) (*models.Asset, error) {
 	return &createdAsset, nil
 }
 
-// --- THIS IS THE FINAL, CORRECTED FUNCTION ---
 func (db *DB) GetAllAssets() ([]models.Asset, error) {
 	query := `
 		SELECT
 			id, name, category, purchase_date::text, value, status,
-			location, serial_number, supplier, image_url,
+			location, invoice_number, supplier, image_url,
 			created_at, updated_at
 		FROM assets
 		ORDER BY created_at DESC`
@@ -793,7 +794,7 @@ func (db *DB) GetAllAssets() ([]models.Asset, error) {
 		var asset models.Asset
 		if err := rows.Scan(
 			&asset.ID, &asset.Name, &asset.Category, &asset.PurchaseDate, &asset.Value,
-			&asset.Status, &asset.Location, &asset.SerialNumber, &asset.Supplier,
+			&asset.Status, &asset.Location, &asset.InvoiceNumber, &asset.Supplier,
 			&asset.ImageURL, &asset.CreatedAt, &asset.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -802,13 +803,14 @@ func (db *DB) GetAllAssets() ([]models.Asset, error) {
 	}
 	return assets, nil
 }
+
 func (db *DB) UpdateAsset(asset *models.Asset) error {
 	query := `
 		UPDATE assets
-		SET name = $1, category = $2, purchase_date = $3, value = $4, status = $5, location = $6, serial_number = $7, supplier = $8, image_url = $9, updated_at = CURRENT_TIMESTAMP
+		SET name = $1, category = $2, purchase_date = $3, value = $4, status = $5, location = $6, invoice_number = $7, supplier = $8, image_url = $9, updated_at = CURRENT_TIMESTAMP
 		WHERE id = $10`
 	_, err := db.pool.Exec(context.Background(), query,
-		asset.Name, asset.Category, asset.PurchaseDate, asset.Value, asset.Status, asset.Location, asset.SerialNumber, asset.Supplier, asset.ImageURL, asset.ID)
+		asset.Name, asset.Category, asset.PurchaseDate, asset.Value, asset.Status, asset.Location, asset.InvoiceNumber, asset.Supplier, asset.ImageURL, asset.ID)
 	return err
 }
 
