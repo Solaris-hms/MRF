@@ -1,60 +1,54 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
     FaBuilding, FaUser, FaPhone, FaEnvelope, FaMapMarkerAlt, 
     FaIndustry, FaFileContract, FaSave, FaSpinner, FaCheckCircle,
     FaIdCard, FaCalendarAlt, FaPlus, FaTimes, FaWarehouse, FaUpload,
     FaEdit, FaTrash, FaDownload, FaEye, FaFileAlt, FaTable
 } from 'react-icons/fa';
+import { createVendor, getVendors, updateVendor, deleteVendor, uploadVendorDocuments, downloadVendorDocument } from '../services/apiService';
 
 const VendorRegistrationPage = () => {
-    const [currentView, setCurrentView] = useState('form'); // 'form' or 'table'
+    const [currentView, setCurrentView] = useState('table'); // 'form' or 'table'
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [vendors, setVendors] = useState([]); // Store all registered vendors
     const [editingVendor, setEditingVendor] = useState(null);
     
-    const [formData, setFormData] = useState({
-        // General Information
-        vendorName: '',
-        vendorCode: '',
-        yearOfEstablishment: '',
-        
-        // Factory Details
+    const initialFormData = {
+        vendor_name: '',
+        vendor_code: '',
+        year_of_establishment: '',
         factories: [{
-            address1: '',
-            address2: '',
-            address3: '',
-            mobNo: '',
-            faxNo: '',
-            emailId: ''
+            address1: '', address2: '', address3: '', mob_no: '', fax_no: '', email_id: ''
         }],
-        
-        // Company Information
-        typeOfOwnership: '',
-        typeOfBusiness: '',
-        isSSI_MSME: '',
-        registrationNo: '',
-        
-        // Tax Details
-        cpcbLicNo: '',
-        salesTaxNo: '',
-        gstNo: '',
-        panNo: '',
-        
-        // Document Attachments
-        documents: [],
-        
-        // Signature Details
-        preparedBy: '',
-        authorizedBy: '',
-        approvedBy: '',
-        
-        // Meta
-        submissionDate: '',
-        status: 'Pending'
-    });
-
+        type_of_ownership: '',
+        type_of_business: '',
+        is_ssi_msme: '',
+        registration_no: '',
+        cpcb_lic_no: '',
+        sales_tax_no: '',
+        gst_no: '',
+        pan_no: '',
+        prepared_by: '',
+        authorized_by: '',
+        approved_by: '',
+    };
+    
+    const [formData, setFormData] = useState(initialFormData);
     const [attachments, setAttachments] = useState([]);
     const fileInputRef = useRef(null);
+
+    const fetchVendors = async () => {
+        try {
+            const response = await getVendors();
+            setVendors(response.data || []);
+        } catch (error) {
+            console.error("Failed to fetch vendors", error);
+        }
+    };
+
+    useEffect(() => {
+        fetchVendors();
+    }, []);
 
     const ownershipTypes = [
         'Public Sector', 'Private Sector', 'Joint Sector', 'Proprietorship', 'Partnership'
@@ -81,7 +75,7 @@ const VendorRegistrationPage = () => {
         setFormData(prev => ({
             ...prev,
             factories: [...prev.factories, {
-                address1: '', address2: '', address3: '', mobNo: '', faxNo: '', emailId: ''
+                address1: '', address2: '', address3: '', mob_no: '', fax_no: '', email_id: ''
             }]
         }));
     };
@@ -97,16 +91,14 @@ const VendorRegistrationPage = () => {
 
     const handleFileUpload = (e) => {
         const files = Array.from(e.target.files);
-        files.forEach(file => {
-            const newDoc = {
-                id: Date.now() + Math.random(),
-                name: file.name,
-                size: file.size,
-                type: file.type,
-                file: file
-            };
-            setAttachments(prev => [...prev, newDoc]);
-        });
+        const newAttachments = files.map(file => ({
+            id: Date.now() + Math.random(),
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            file: file
+        }));
+        setAttachments(prev => [...prev, ...newAttachments]);
         e.target.value = '';
     };
 
@@ -118,47 +110,87 @@ const VendorRegistrationPage = () => {
         e.preventDefault();
         setIsSubmitting(true);
         
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        const newVendor = {
-            ...formData,
-            id: editingVendor ? editingVendor.id : Date.now(),
-            documents: attachments,
-            submissionDate: new Date().toLocaleDateString(),
-            status: 'Pending'
-        };
-
-        if (editingVendor) {
-            setVendors(prev => prev.map(v => v.id === editingVendor.id ? newVendor : v));
+        try {
+            if (editingVendor) {
+                await updateVendor(editingVendor.id, formData);
+                if (attachments.length > 0) {
+                    const filesToUpload = attachments.filter(a => a.file).map(a => a.file);
+                    if(filesToUpload.length > 0) {
+                        await uploadVendorDocuments(editingVendor.id, filesToUpload);
+                    }
+                }
+            } else {
+                const response = await createVendor(formData);
+                const newVendor = response.data;
+                if (attachments.length > 0) {
+                     const filesToUpload = attachments.filter(a => a.file).map(a => a.file);
+                    if (filesToUpload.length > 0) {
+                        await uploadVendorDocuments(newVendor.id, filesToUpload);
+                    }
+                }
+            }
+            
+            setFormData(initialFormData);
+            setAttachments([]);
             setEditingVendor(null);
-        } else {
-            setVendors(prev => [...prev, newVendor]);
+            fetchVendors();
+            setCurrentView('table');
+        } catch (error) {
+            console.error("Failed to save vendor", error);
+            alert("Failed to save vendor. Check the console for more details.");
+        } finally {
+            setIsSubmitting(false);
         }
-
-        // Reset form
-        setFormData({
-            vendorName: '', vendorCode: '', yearOfEstablishment: '',
-            factories: [{ address1: '', address2: '', address3: '', mobNo: '', faxNo: '', emailId: '' }],
-            typeOfOwnership: '', typeOfBusiness: '', isSSI_MSME: '', registrationNo: '',
-            cpcbLicNo: '', salesTaxNo: '', gstNo: '', panNo: '',
-            documents: [], preparedBy: '', authorizedBy: '', approvedBy: '',
-            submissionDate: '', status: 'Pending'
-        });
-        setAttachments([]);
-        setIsSubmitting(false);
-        setCurrentView('table');
     };
-
+    
     const editVendor = (vendor) => {
-        setFormData(vendor);
+        setFormData({
+            vendor_name: vendor.vendor_name,
+            vendor_code: vendor.vendor_code || '',
+            year_of_establishment: vendor.year_of_establishment || '',
+            factories: vendor.factories.length > 0 ? vendor.factories : initialFormData.factories,
+            type_of_ownership: vendor.type_of_ownership || '',
+            type_of_business: vendor.type_of_business || '',
+            is_ssi_msme: vendor.is_ssi_msme || '',
+            registration_no: vendor.registration_no || '',
+            cpcb_lic_no: vendor.cpcb_lic_no || '',
+            sales_tax_no: vendor.sales_tax_no || '',
+            gst_no: vendor.gst_no || '',
+            pan_no: vendor.pan_no || '',
+            prepared_by: vendor.prepared_by || '',
+            authorized_by: vendor.authorized_by || '',
+            approved_by: vendor.approved_by || '',
+        });
         setAttachments(vendor.documents || []);
         setEditingVendor(vendor);
         setCurrentView('form');
     };
 
-    const deleteVendor = (vendorId) => {
+    const deleteVendorHandler = async (vendorId) => {
         if (window.confirm('Are you sure you want to delete this vendor?')) {
-            setVendors(prev => prev.filter(v => v.id !== vendorId));
+            try {
+                await deleteVendor(vendorId);
+                fetchVendors();
+            } catch (error) {
+                console.error("Failed to delete vendor", error);
+                alert("Failed to delete vendor.");
+            }
+        }
+    };
+    
+    const handleDownload = async (doc) => {
+        try {
+            const response = await downloadVendorDocument(doc.id);
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', doc.original_name);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (error) {
+            console.error("Failed to download document", error);
+            alert("Failed to download document.");
         }
     };
 
@@ -169,7 +201,7 @@ const VendorRegistrationPage = () => {
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Vendor Registration Form - ${vendor.vendorName}</title>
+                <title>Vendor Registration Form - ${vendor.vendor_name}</title>
                 <style>
                     @page {
                         margin: 0.5in;
@@ -351,7 +383,7 @@ const VendorRegistrationPage = () => {
                         <div class="doc-info">
                             <span><strong>DOC NO:</strong> VRF-001</span>
                             <span><strong>Page:</strong> 1 of 1</span>
-                            <span><strong>Date:</strong> ${vendor.submissionDate || new Date().toLocaleDateString()}</span>
+                            <span><strong>Date:</strong> ${new Date(vendor.created_at).toLocaleDateString()}</span>
                         </div>
                     </div>
 
@@ -360,17 +392,17 @@ const VendorRegistrationPage = () => {
                         <div class="field-row">
                             <div class="field">
                                 <span class="field-label">Name of Vendor:</span>
-                                <span class="field-value">${vendor.vendorName || ''}</span>
+                                <span class="field-value">${vendor.vendor_name || ''}</span>
                             </div>
                         </div>
                         <div class="field-row">
                             <div class="field">
                                 <span class="field-label">Vendor Code:</span>
-                                <span class="field-value">${vendor.vendorCode || ''}</span>
+                                <span class="field-value">${vendor.vendor_code || ''}</span>
                             </div>
                             <div class="field">
                                 <span class="field-label">Year of Establishment:</span>
-                                <span class="field-value">${vendor.yearOfEstablishment || ''}</span>
+                                <span class="field-value">${vendor.year_of_establishment || ''}</span>
                             </div>
                         </div>
                     </div>
@@ -396,9 +428,9 @@ const VendorRegistrationPage = () => {
                                         <td>${factory.address1 || ''}</td>
                                         <td>${factory.address2 || ''}</td>
                                         <td>${factory.address3 || ''}</td>
-                                        <td>${factory.mobNo || ''}</td>
-                                        <td>${factory.faxNo || ''}</td>
-                                        <td>${factory.emailId || ''}</td>
+                                        <td>${factory.mob_no || ''}</td>
+                                        <td>${factory.fax_no || ''}</td>
+                                        <td>${factory.email_id || ''}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
@@ -410,21 +442,21 @@ const VendorRegistrationPage = () => {
                         <div class="field-row">
                             <div class="field">
                                 <span class="field-label">Type of Ownership:</span>
-                                <span class="field-value">${vendor.typeOfOwnership || ''}</span>
+                                <span class="field-value">${vendor.type_of_ownership || ''}</span>
                             </div>
                             <div class="field">
                                 <span class="field-label">Type of Business:</span>
-                                <span class="field-value">${vendor.typeOfBusiness || ''}</span>
+                                <span class="field-value">${vendor.type_of_business || ''}</span>
                             </div>
                         </div>
                         <div class="field-row">
                             <div class="field">
                                 <span class="field-label">SSI/MSME Registered:</span>
-                                <span class="field-value">${vendor.isSSI_MSME || ''}</span>
+                                <span class="field-value">${vendor.is_ssi_msme || ''}</span>
                             </div>
                             <div class="field">
                                 <span class="field-label">Registration No:</span>
-                                <span class="field-value">${vendor.registrationNo || ''}</span>
+                                <span class="field-value">${vendor.registration_no || ''}</span>
                             </div>
                         </div>
                     </div>
@@ -434,43 +466,52 @@ const VendorRegistrationPage = () => {
                         <div class="field-row">
                             <div class="field">
                                 <span class="field-label">CPCB Lic No:</span>
-                                <span class="field-value">${vendor.cpcbLicNo || ''}</span>
+                                <span class="field-value">${vendor.cpcb_lic_no || ''}</span>
                             </div>
                             <div class="field">
                                 <span class="field-label">Sales Tax No:</span>
-                                <span class="field-value">${vendor.salesTaxNo || ''}</span>
+                                <span class="field-value">${vendor.sales_tax_no || ''}</span>
                             </div>
                         </div>
                         <div class="field-row">
                             <div class="field">
                                 <span class="field-label">GST No:</span>
-                                <span class="field-value">${vendor.gstNo || ''}</span>
+                                <span class="field-value">${vendor.gst_no || ''}</span>
                             </div>
                             <div class="field">
                                 <span class="field-label">PAN No:</span>
-                                <span class="field-value">${vendor.panNo || ''}</span>
+                                <span class="field-value">${vendor.pan_no || ''}</span>
                             </div>
                         </div>
                     </div>
+                    
+                    ${vendor.documents && vendor.documents.length > 0 ? `
+                    <div class="section">
+                        <div class="section-title">ATTACHED DOCUMENTS</div>
+                        <ul>
+                            ${vendor.documents.map(doc => `<li>${doc.original_name}</li>`).join('')}
+                        </ul>
+                    </div>
+                    ` : ''}
 
                     <div class="signatures">
                         <div class="sig-row">
                             <div class="sig-box">
                                 <div class="sig-line"></div>
                                 <div class="sig-title">Prepared by</div>
-                                <div class="sig-name">${vendor.preparedBy || ''}</div>
+                                <div class="sig-name">${vendor.prepared_by || ''}</div>
                                 <div style="font-size: 7pt; margin-top: 8px;">Date: ___________</div>
                             </div>
                             <div class="sig-box">
                                 <div class="sig-line"></div>
                                 <div class="sig-title">Authorized by</div>
-                                <div class="sig-name">${vendor.authorizedBy || ''}</div>
+                                <div class="sig-name">${vendor.authorized_by || ''}</div>
                                 <div style="font-size: 7pt; margin-top: 8px;">Date: ___________</div>
                             </div>
                             <div class="sig-box">
                                 <div class="sig-line"></div>
                                 <div class="sig-title">Approved by</div>
-                                <div class="sig-name">${vendor.approvedBy || ''}</div>
+                                <div class="sig-name">${vendor.approved_by || ''}</div>
                                 <div style="font-size: 7pt; margin-top: 8px;">Date: ___________</div>
                             </div>
                         </div>
@@ -513,7 +554,12 @@ const VendorRegistrationPage = () => {
                             <p className="text-gray-600">Manage your vendor database</p>
                         </div>
                         <button
-                            onClick={() => setCurrentView('form')}
+                            onClick={() => {
+                                setEditingVendor(null);
+                                setFormData(initialFormData);
+                                setAttachments([]);
+                                setCurrentView('form');
+                            }}
                             className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                         >
                             <FaPlus />
@@ -529,7 +575,6 @@ const VendorRegistrationPage = () => {
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vendor Name</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Business Type</th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Submission Date</th>
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                                     </tr>
@@ -537,7 +582,7 @@ const VendorRegistrationPage = () => {
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {vendors.length === 0 ? (
                                         <tr>
-                                            <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                                            <td colSpan="5" className="px-6 py-12 text-center text-gray-500">
                                                 <FaTable className="mx-auto h-12 w-12 text-gray-300 mb-4" />
                                                 <p>No vendors registered yet</p>
                                             </td>
@@ -546,21 +591,17 @@ const VendorRegistrationPage = () => {
                                         vendors.map(vendor => (
                                             <tr key={vendor.id} className="hover:bg-gray-50">
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <div className="font-medium text-gray-900">{vendor.vendorName}</div>
+                                                    <div className="font-medium text-gray-900">{vendor.vendor_name}</div>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                                                    {vendor.vendorCode}
+                                                    {vendor.vendor_code}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                                                    {vendor.typeOfBusiness}
+                                                    {vendor.type_of_business}
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
-                                                        {vendor.status}
-                                                    </span>
-                                                </td>
+                                               
                                                 <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                                                    {vendor.submissionDate}
+                                                    {new Date(vendor.created_at).toLocaleDateString()}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <div className="flex space-x-2">
@@ -579,7 +620,7 @@ const VendorRegistrationPage = () => {
                                                             <FaDownload />
                                                         </button>
                                                         <button
-                                                            onClick={() => deleteVendor(vendor.id)}
+                                                            onClick={() => deleteVendorHandler(vendor.id)}
                                                             className="text-red-600 hover:text-red-800 p-1"
                                                             title="Delete"
                                                         >
@@ -632,6 +673,7 @@ const VendorRegistrationPage = () => {
                 </div>
 
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
+                    <form onSubmit={handleSubmit}>
                     <div className="p-8 space-y-10">
                         
                         {/* General Information */}
@@ -643,23 +685,27 @@ const VendorRegistrationPage = () => {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <InputField
                                     label="Name of the Vendor"
-                                    value={formData.vendorName}
-                                    onChange={(e) => handleInputChange('vendorName', e.target.value)}
+                                    name="vendor_name"
+                                    value={formData.vendor_name}
+                                    onChange={(e) => handleInputChange('vendor_name', e.target.value)}
                                     placeholder="Enter vendor name"
+                                    required
                                 />
                                 
                                 <InputField
                                     label="Vendor Code"
-                                    value={formData.vendorCode}
-                                    onChange={(e) => handleInputChange('vendorCode', e.target.value)}
+                                    name="vendor_code"
+                                    value={formData.vendor_code}
+                                    onChange={(e) => handleInputChange('vendor_code', e.target.value)}
                                     placeholder="Auto-generated or enter code"
                                 />
                                 
                                 <InputField
                                     label="Year of Establishment"
+                                    name="year_of_establishment"
                                     type="number"
-                                    value={formData.yearOfEstablishment}
-                                    onChange={(e) => handleInputChange('yearOfEstablishment', e.target.value)}
+                                    value={formData.year_of_establishment}
+                                    onChange={(e) => handleInputChange('year_of_establishment', e.target.value)}
                                     placeholder="e.g., 2010"
                                     min="1900"
                                     max={new Date().getFullYear()}
@@ -705,6 +751,7 @@ const VendorRegistrationPage = () => {
                                         <div className="lg:col-span-3">
                                             <InputField
                                                 label="Address Line 1"
+                                                name={`address1_${index}`}
                                                 value={factory.address1}
                                                 onChange={(e) => handleFactoryChange(index, 'address1', e.target.value)}
                                                 placeholder="Building, Street"
@@ -713,6 +760,7 @@ const VendorRegistrationPage = () => {
                                         
                                         <InputField
                                             label="Address Line 2"
+                                             name={`address2_${index}`}
                                             value={factory.address2}
                                             onChange={(e) => handleFactoryChange(index, 'address2', e.target.value)}
                                             placeholder="Area, Locality"
@@ -720,6 +768,7 @@ const VendorRegistrationPage = () => {
                                         
                                         <InputField
                                             label="Address Line 3"
+                                             name={`address3_${index}`}
                                             value={factory.address3}
                                             onChange={(e) => handleFactoryChange(index, 'address3', e.target.value)}
                                             placeholder="City, State, PIN"
@@ -727,24 +776,27 @@ const VendorRegistrationPage = () => {
                                         
                                         <InputField
                                             label="Mobile Number"
+                                            name={`mob_no_${index}`}
                                             type="tel"
-                                            value={factory.mobNo}
-                                            onChange={(e) => handleFactoryChange(index, 'mobNo', e.target.value)}
+                                            value={factory.mob_no}
+                                            onChange={(e) => handleFactoryChange(index, 'mob_no', e.target.value)}
                                             placeholder="+91 98765 43210"
                                         />
                                         
                                         <InputField
                                             label="Fax Number"
-                                            value={factory.faxNo}
-                                            onChange={(e) => handleFactoryChange(index, 'faxNo', e.target.value)}
+                                            name={`fax_no_${index}`}
+                                            value={factory.fax_no}
+                                            onChange={(e) => handleFactoryChange(index, 'fax_no', e.target.value)}
                                             placeholder="Fax number"
                                         />
                                         
                                         <InputField
                                             label="Email ID"
+                                            name={`email_id_${index}`}
                                             type="email"
-                                            value={factory.emailId}
-                                            onChange={(e) => handleFactoryChange(index, 'emailId', e.target.value)}
+                                            value={factory.email_id}
+                                            onChange={(e) => handleFactoryChange(index, 'email_id', e.target.value)}
                                             placeholder="email@company.com"
                                         />
                                     </div>
@@ -761,32 +813,36 @@ const VendorRegistrationPage = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <SelectField
                                     label="Type of Ownership"
-                                    value={formData.typeOfOwnership}
-                                    onChange={(e) => handleInputChange('typeOfOwnership', e.target.value)}
+                                    name="type_of_ownership"
+                                    value={formData.type_of_ownership}
+                                    onChange={(e) => handleInputChange('type_of_ownership', e.target.value)}
                                     options={ownershipTypes}
                                     placeholder="Select ownership type"
                                 />
                                 
                                 <SelectField
                                     label="Type of Business"
-                                    value={formData.typeOfBusiness}
-                                    onChange={(e) => handleInputChange('typeOfBusiness', e.target.value)}
+                                     name="type_of_business"
+                                    value={formData.type_of_business}
+                                    onChange={(e) => handleInputChange('type_of_business', e.target.value)}
                                     options={businessTypes}
                                     placeholder="Select business type"
                                 />
                                 
                                 <SelectField
                                     label="Whether registered as SSI unit / MSME"
-                                    value={formData.isSSI_MSME}
-                                    onChange={(e) => handleInputChange('isSSI_MSME', e.target.value)}
+                                    name="is_ssi_msme"
+                                    value={formData.is_ssi_msme}
+                                    onChange={(e) => handleInputChange('is_ssi_msme', e.target.value)}
                                     options={['Yes', 'No']}
                                     placeholder="Select Yes/No"
                                 />
                                 
                                 <InputField
                                     label="Registration Number"
-                                    value={formData.registrationNo}
-                                    onChange={(e) => handleInputChange('registrationNo', e.target.value)}
+                                     name="registration_no"
+                                    value={formData.registration_no}
+                                    onChange={(e) => handleInputChange('registration_no', e.target.value)}
                                     placeholder="SSI/MSME Registration No."
                                 />
                             </div>
@@ -801,29 +857,33 @@ const VendorRegistrationPage = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <InputField
                                     label="CPCB License Number"
-                                    value={formData.cpcbLicNo}
-                                    onChange={(e) => handleInputChange('cpcbLicNo', e.target.value)}
+                                    name="cpcb_lic_no"
+                                    value={formData.cpcb_lic_no}
+                                    onChange={(e) => handleInputChange('cpcb_lic_no', e.target.value)}
                                     placeholder="CPCB License Number"
                                 />
                                 
                                 <InputField
                                     label="Sales Tax Number"
-                                    value={formData.salesTaxNo}
-                                    onChange={(e) => handleInputChange('salesTaxNo', e.target.value)}
+                                    name="sales_tax_no"
+                                    value={formData.sales_tax_no}
+                                    onChange={(e) => handleInputChange('sales_tax_no', e.target.value)}
                                     placeholder="Sales Tax Number"
                                 />
                                 
                                 <InputField
                                     label="GST Number"
-                                    value={formData.gstNo}
-                                    onChange={(e) => handleInputChange('gstNo', e.target.value)}
+                                    name="gst_no"
+                                    value={formData.gst_no}
+                                    onChange={(e) => handleInputChange('gst_no', e.target.value)}
                                     placeholder="22ABCDE1234F1Z5"
                                 />
                                 
                                 <InputField
                                     label="PAN Number"
-                                    value={formData.panNo}
-                                    onChange={(e) => handleInputChange('panNo', e.target.value)}
+                                    name="pan_no"
+                                    value={formData.pan_no}
+                                    onChange={(e) => handleInputChange('pan_no', e.target.value)}
                                     placeholder="ABCDE1234F"
                                 />
                             </div>
@@ -865,16 +925,21 @@ const VendorRegistrationPage = () => {
                                             <div className="flex items-center gap-3">
                                                 <FaFileAlt className="text-blue-600" />
                                                 <div>
-                                                    <p className="font-medium">{doc.name}</p>
-                                                    <p className="text-sm text-gray-500">{(doc.size / 1024).toFixed(1)} KB</p>
+                                                    <p className="font-medium">{doc.original_name || doc.name}</p>
+                                                    <p className="text-sm text-gray-500">{(doc.file_size / 1024).toFixed(1)} KB</p>
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={() => removeDocument(doc.id)}
-                                                className="text-red-500 hover:text-red-700 p-1"
-                                            >
-                                                <FaTimes />
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                {doc.file_path && 
+                                                    <button type="button" onClick={() => handleDownload(doc)} className="text-green-600 hover:text-green-800 p-1"><FaDownload/></button>
+                                                }
+                                                <button
+                                                    onClick={() => removeDocument(doc.id)}
+                                                    className="text-red-500 hover:text-red-700 p-1"
+                                                >
+                                                    <FaTimes />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                 </div>
@@ -890,22 +955,25 @@ const VendorRegistrationPage = () => {
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <InputField
                                     label="Prepared by"
-                                    value={formData.preparedBy}
-                                    onChange={(e) => handleInputChange('preparedBy', e.target.value)}
+                                    name="prepared_by"
+                                    value={formData.prepared_by}
+                                    onChange={(e) => handleInputChange('prepared_by', e.target.value)}
                                     placeholder="Name of person preparing"
                                 />
                                 
                                 <InputField
                                     label="Authorized by"
-                                    value={formData.authorizedBy}
-                                    onChange={(e) => handleInputChange('authorizedBy', e.target.value)}
+                                    name="authorized_by"
+                                    value={formData.authorized_by}
+                                    onChange={(e) => handleInputChange('authorized_by', e.target.value)}
                                     placeholder="Department head name"
                                 />
                                 
                                 <InputField
                                     label="Approved by"
-                                    value={formData.approvedBy}
-                                    onChange={(e) => handleInputChange('approvedBy', e.target.value)}
+                                    name="approved_by"
+                                    value={formData.approved_by}
+                                    onChange={(e) => handleInputChange('approved_by', e.target.value)}
                                     placeholder="Management approval"
                                 />
                             </div>
@@ -935,8 +1003,7 @@ const VendorRegistrationPage = () => {
                                 )}
                                 
                                 <button
-                                    type="button"
-                                    onClick={handleSubmit}
+                                    type="submit"
                                     disabled={isSubmitting}
                                     className="px-12 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center space-x-3"
                                 >
@@ -955,6 +1022,7 @@ const VendorRegistrationPage = () => {
                             </div>
                         </div>
                     </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -964,10 +1032,11 @@ const VendorRegistrationPage = () => {
 // Input Field Component
 const InputField = ({ label, required, ...props }) => (
     <div className="space-y-2">
-        <label className="block text-sm font-semibold text-gray-700">
+        <label htmlFor={props.name} className="block text-sm font-semibold text-gray-700">
             {label} {required && <span className="text-red-500">*</span>}
         </label>
         <input
+            id={props.name}
             {...props}
             className="w-full h-11 px-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 hover:border-gray-300 bg-white"
         />
@@ -977,10 +1046,11 @@ const InputField = ({ label, required, ...props }) => (
 // Select Field Component
 const SelectField = ({ label, options, placeholder, required, ...props }) => (
     <div className="space-y-2">
-        <label className="block text-sm font-semibold text-gray-700">
+        <label htmlFor={props.name} className="block text-sm font-semibold text-gray-700">
             {label} {required && <span className="text-red-500">*</span>}
         </label>
         <select
+             id={props.name}
             {...props}
             className="w-full h-11 px-4 border-2 border-gray-200 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 hover:border-gray-300 bg-white appearance-none"
         >

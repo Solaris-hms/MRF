@@ -21,6 +21,7 @@ const Sidebar = ({ setSidebarOpen }) => {
   const canViewAnalytics = user?.permissions?.includes('view:dashboard');
   const canManageUsers = user?.permissions?.includes('manage:users');
   const canViewTransactions = user?.permissions?.includes('view:cashbook');
+  const canViewVendors = user?.permissions?.includes('view:vendors');
   
   const navSections = [
     { 
@@ -49,7 +50,7 @@ const Sidebar = ({ setSidebarOpen }) => {
     {
       title: 'Partners',
       icon: <FaHandshake />,
-      show: true, // Make this accessible to everyone for now
+      show: canViewVendors, // Now properly controlled by permission
       links: [
         { name: 'Vendor Registration', path: '/vendor-registration' },
         // You can add more partner-related links here later

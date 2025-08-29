@@ -95,6 +95,15 @@ func main() {
 		ops.PUT("/assets/:id", middleware.PermissionMiddleware("edit:assets"), h.UpdateAsset)
 		ops.DELETE("/assets/:id", middleware.PermissionMiddleware("delete:assets"), h.DeleteAsset)
 		ops.POST("/assets/:id/image", middleware.PermissionMiddleware("edit:assets"), h.UploadAssetImage)
+
+		ops.POST("/vendors", middleware.PermissionMiddleware("create:vendors"), h.CreateVendor)
+		ops.GET("/vendors", middleware.PermissionMiddleware("view:vendors"), h.GetVendors)
+		ops.GET("/vendors/:id", middleware.PermissionMiddleware("view:vendors"), h.GetVendor)
+		ops.PUT("/vendors/:id", middleware.PermissionMiddleware("edit:vendors"), h.UpdateVendor)
+		ops.DELETE("/vendors/:id", middleware.PermissionMiddleware("delete:vendors"), h.DeleteVendor)
+		ops.POST("/vendors/:id/documents", middleware.PermissionMiddleware("manage:vendor_documents"), h.UploadVendorDocument)
+		ops.GET("/vendor-documents/:docId/download", middleware.PermissionMiddleware("view:vendors"), h.DownloadVendorDocument)
+		ops.DELETE("/vendor-documents/:docId", middleware.PermissionMiddleware("manage:vendor_documents"), h.DeleteVendorDocument)
 	}
 
 	log.Println("Server starting on port 8080...")

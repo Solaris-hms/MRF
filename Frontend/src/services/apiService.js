@@ -124,3 +124,45 @@ export const uploadAssetImage = (id, imageData) => {
         },
     });
 };
+export const createVendor = (vendorData) => {
+    return api.post('/operations/vendors', vendorData);
+};
+
+export const getVendors = () => {
+    return api.get('/operations/vendors');
+};
+
+export const getVendor = (vendorId) => {
+    return api.get(`/operations/vendors/${vendorId}`);
+};
+
+export const updateVendor = (vendorId, vendorData) => {
+    return api.put(`/operations/vendors/${vendorId}`, vendorData);
+};
+
+export const deleteVendor = (vendorId) => {
+    return api.delete(`/operations/vendors/${vendorId}`);
+};
+
+export const uploadVendorDocuments = (vendorId, files) => {
+    const formData = new FormData();
+    files.forEach(file => {
+        formData.append('documents', file);
+    });
+    
+    return api.post(`/operations/vendors/${vendorId}/documents`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+};
+
+export const downloadVendorDocument = (docId) => {
+    return api.get(`/operations/vendor-documents/${docId}/download`, {
+        responseType: 'blob',
+    });
+};
+
+export const deleteVendorDocument = (docId) => {
+    return api.delete(`/operations/vendor-documents/${docId}`);
+};
