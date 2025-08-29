@@ -2,9 +2,12 @@ package database
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"log"
 	"math"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/solaris-hms/mrf-backend/models"
@@ -47,13 +50,11 @@ func (db *DB) GetUserByEmail(email string) (*models.User, error) {
 	query := `SELECT id, full_name, email, password_hash, is_approved, created_at FROM users WHERE email = $1`
 	err := db.pool.QueryRow(context.Background(), query, email).Scan(&user.ID, &user.FullName, &user.Email, &user.PasswordHash, &user.IsApproved, &user.CreatedAt)
 
-	// --- THIS IS THE CRUCIAL FIX ---
-	// This handles the "user not found" case without crashing the application.
 	if err != nil {
 		if err == pgx.ErrNoRows {
-			return nil, err // Return the "not found" error, which is expected.
+			return nil, err
 		}
-		log.Printf("Unexpected error getting user by email: %v", err) // Log other errors
+		log.Printf("Unexpected error getting user by email: %v", err)
 		return nil, err
 	}
 	return &user, nil
@@ -752,18 +753,20 @@ func (db *DB) SaveMonthlyAttendance(dateStr string, records []models.AttendanceR
 	return tx.Commit(context.Background())
 }
 
+// Updated database functions for assets with invoice_number
+
 func (db *DB) CreateAsset(asset *models.Asset) (*models.Asset, error) {
 	query := `
-        INSERT INTO assets (id, name, category, purchase_date, value, status, location, serial_number, supplier, image_url)
+        INSERT INTO assets (id, name, category, purchase_date, value, status, location, invoice_number, supplier, image_url)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-        RETURNING id, name, category, purchase_date::text, value, status, location, serial_number, supplier, image_url, created_at, updated_at`
+        RETURNING id, name, category, purchase_date::text, value, status, location, invoice_number, supplier, image_url, created_at, updated_at`
 
 	var createdAsset models.Asset
 	err := db.pool.QueryRow(context.Background(), query,
-		asset.ID, asset.Name, asset.Category, asset.PurchaseDate, asset.Value, asset.Status, asset.Location, asset.SerialNumber, asset.Supplier, asset.ImageURL,
+		asset.ID, asset.Name, asset.Category, asset.PurchaseDate, asset.Value, asset.Status, asset.Location, asset.InvoiceNumber, asset.Supplier, asset.ImageURL,
 	).Scan(
 		&createdAsset.ID, &createdAsset.Name, &createdAsset.Category, &createdAsset.PurchaseDate, &createdAsset.Value,
-		&createdAsset.Status, &createdAsset.Location, &createdAsset.SerialNumber, &createdAsset.Supplier,
+		&createdAsset.Status, &createdAsset.Location, &createdAsset.InvoiceNumber, &createdAsset.Supplier,
 		&createdAsset.ImageURL, &createdAsset.CreatedAt, &createdAsset.UpdatedAt,
 	)
 	if err != nil {
@@ -772,12 +775,11 @@ func (db *DB) CreateAsset(asset *models.Asset) (*models.Asset, error) {
 	return &createdAsset, nil
 }
 
-// --- THIS IS THE FINAL, CORRECTED FUNCTION ---
 func (db *DB) GetAllAssets() ([]models.Asset, error) {
 	query := `
 		SELECT
 			id, name, category, purchase_date::text, value, status,
-			location, serial_number, supplier, image_url,
+			location, invoice_number, supplier, image_url,
 			created_at, updated_at
 		FROM assets
 		ORDER BY created_at DESC`
@@ -793,7 +795,7 @@ func (db *DB) GetAllAssets() ([]models.Asset, error) {
 		var asset models.Asset
 		if err := rows.Scan(
 			&asset.ID, &asset.Name, &asset.Category, &asset.PurchaseDate, &asset.Value,
-			&asset.Status, &asset.Location, &asset.SerialNumber, &asset.Supplier,
+			&asset.Status, &asset.Location, &asset.InvoiceNumber, &asset.Supplier,
 			&asset.ImageURL, &asset.CreatedAt, &asset.UpdatedAt,
 		); err != nil {
 			return nil, err
@@ -802,13 +804,14 @@ func (db *DB) GetAllAssets() ([]models.Asset, error) {
 	}
 	return assets, nil
 }
+
 func (db *DB) UpdateAsset(asset *models.Asset) error {
 	query := `
 		UPDATE assets
-		SET name = $1, category = $2, purchase_date = $3, value = $4, status = $5, location = $6, serial_number = $7, supplier = $8, image_url = $9, updated_at = CURRENT_TIMESTAMP
+		SET name = $1, category = $2, purchase_date = $3, value = $4, status = $5, location = $6, invoice_number = $7, supplier = $8, image_url = $9, updated_at = CURRENT_TIMESTAMP
 		WHERE id = $10`
 	_, err := db.pool.Exec(context.Background(), query,
-		asset.Name, asset.Category, asset.PurchaseDate, asset.Value, asset.Status, asset.Location, asset.SerialNumber, asset.Supplier, asset.ImageURL, asset.ID)
+		asset.Name, asset.Category, asset.PurchaseDate, asset.Value, asset.Status, asset.Location, asset.InvoiceNumber, asset.Supplier, asset.ImageURL, asset.ID)
 	return err
 }
 
@@ -856,4 +859,523 @@ func (db *DB) SyncPermissions(permissions []string) error {
 	}
 
 	return tx.Commit(context.Background())
+}
+
+// ADD THESE FUNCTIONS TO YOUR EXISTING database/database.go FILE
+
+// CreateVendor creates a new vendor with factories
+func (db *DB) CreateVendor(req *models.CreateVendorRequest, vendorID string, userID int) (*models.Vendor, error) {
+	tx, err := db.pool.Begin(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(context.Background())
+
+	// Insert vendor
+	query := `
+		INSERT INTO vendors (id, vendor_name, vendor_code, year_of_establishment, type_of_ownership, 
+			type_of_business, is_ssi_msme, registration_no, cpcb_lic_no, sales_tax_no, gst_no, pan_no, 
+			prepared_by, authorized_by, approved_by, created_by_user_id)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+		RETURNING created_at, updated_at, status`
+
+	var vendor models.Vendor
+	err = tx.QueryRow(context.Background(), query,
+		vendorID, req.VendorName, req.VendorCode, req.YearOfEstablishment, req.TypeOfOwnership,
+		req.TypeOfBusiness, req.IsSSI_MSME, req.RegistrationNo, req.CPCBLicNo, req.SalesTaxNo,
+		req.GSTNo, req.PANNo, req.PreparedBy, req.AuthorizedBy, req.ApprovedBy, userID,
+	).Scan(&vendor.CreatedAt, &vendor.UpdatedAt, &vendor.Status)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Insert factories
+	for i, factory := range req.Factories {
+		factoryQuery := `
+			INSERT INTO vendor_factories (vendor_id, factory_no, address1, address2, address3, mob_no, fax_no, email_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+
+		_, err = tx.Exec(context.Background(), factoryQuery,
+			vendorID, i+1, factory.Address1, factory.Address2, factory.Address3,
+			factory.MobNo, factory.FaxNo, factory.EmailID)
+
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err = tx.Commit(context.Background()); err != nil {
+		return nil, err
+	}
+
+	// Build response
+	vendor.ID = vendorID
+	vendor.VendorName = req.VendorName
+	vendor.VendorCode = req.VendorCode
+	vendor.YearOfEstablishment = req.YearOfEstablishment
+	vendor.TypeOfOwnership = req.TypeOfOwnership
+	vendor.TypeOfBusiness = req.TypeOfBusiness
+	vendor.IsSSI_MSME = req.IsSSI_MSME
+	vendor.RegistrationNo = req.RegistrationNo
+	vendor.CPCBLicNo = req.CPCBLicNo
+	vendor.SalesTaxNo = req.SalesTaxNo
+	vendor.GSTNo = req.GSTNo
+	vendor.PANNo = req.PANNo
+	vendor.PreparedBy = req.PreparedBy
+	vendor.AuthorizedBy = req.AuthorizedBy
+	vendor.ApprovedBy = req.ApprovedBy
+	vendor.CreatedByUserID = userID
+
+	return &vendor, nil
+}
+
+// GetAllVendors retrieves all vendors with their factories and document counts
+func (db *DB) GetAllVendors() ([]models.Vendor, error) {
+	query := `
+		SELECT v.id, v.vendor_name, v.vendor_code, v.year_of_establishment, v.type_of_ownership,
+			v.type_of_business, v.is_ssi_msme, v.registration_no, v.cpcb_lic_no, v.sales_tax_no,
+			v.gst_no, v.pan_no, v.prepared_by, v.authorized_by, v.approved_by, v.status,
+			v.created_at, v.updated_at, v.created_by_user_id
+		FROM vendors v
+		ORDER BY v.created_at DESC`
+
+	rows, err := db.pool.Query(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var vendors []models.Vendor
+	for rows.Next() {
+		var vendor models.Vendor
+		var vendorCode, yearOfEstablishment, typeOfOwnership, typeOfBusiness, isSsiMsme, registrationNo, cpcbLicNo, salesTaxNo, gstNo, panNo, preparedBy, authorizedBy, approvedBy sql.NullString
+
+		if err := rows.Scan(
+			&vendor.ID, &vendor.VendorName, &vendorCode, &yearOfEstablishment, &typeOfOwnership,
+			&typeOfBusiness, &isSsiMsme, &registrationNo, &cpcbLicNo, &salesTaxNo,
+			&gstNo, &panNo, &preparedBy, &authorizedBy, &approvedBy, &vendor.Status,
+			&vendor.CreatedAt, &vendor.UpdatedAt, &vendor.CreatedByUserID,
+		); err != nil {
+			log.Printf("Failed to scan vendor row: %v", err)
+			return nil, err
+		}
+
+		if vendorCode.Valid {
+			vendor.VendorCode = &vendorCode.String
+		}
+		if yearOfEstablishment.Valid {
+			vendor.YearOfEstablishment = &yearOfEstablishment.String
+		}
+		if typeOfOwnership.Valid {
+			vendor.TypeOfOwnership = &typeOfOwnership.String
+		}
+		if typeOfBusiness.Valid {
+			vendor.TypeOfBusiness = &typeOfBusiness.String
+		}
+		if isSsiMsme.Valid {
+			vendor.IsSSI_MSME = &isSsiMsme.String
+		}
+		if registrationNo.Valid {
+			vendor.RegistrationNo = &registrationNo.String
+		}
+		if cpcbLicNo.Valid {
+			vendor.CPCBLicNo = &cpcbLicNo.String
+		}
+		if salesTaxNo.Valid {
+			vendor.SalesTaxNo = &salesTaxNo.String
+		}
+		if gstNo.Valid {
+			vendor.GSTNo = &gstNo.String
+		}
+		if panNo.Valid {
+			vendor.PANNo = &panNo.String
+		}
+		if preparedBy.Valid {
+			vendor.PreparedBy = &preparedBy.String
+		}
+		if authorizedBy.Valid {
+			vendor.AuthorizedBy = &authorizedBy.String
+		}
+		if approvedBy.Valid {
+			vendor.ApprovedBy = &approvedBy.String
+		}
+		vendors = append(vendors, vendor)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+
+	for i := range vendors {
+		vendor := &vendors[i]
+		factories, err := db.getVendorFactories(vendor.ID)
+		if err != nil {
+			return nil, fmt.Errorf("error getting factories for vendor %s: %w", vendor.ID, err)
+		}
+		vendor.Factories = factories
+
+		documents, err := db.getVendorDocuments(vendor.ID)
+		if err != nil {
+			return nil, fmt.Errorf("error getting documents for vendor %s: %w", vendor.ID, err)
+		}
+		vendor.Documents = documents
+	}
+
+	return vendors, nil
+}
+
+// GetVendorByID retrieves a single vendor by ID
+func (db *DB) GetVendorByID(vendorID string) (*models.Vendor, error) {
+	query := `
+		SELECT id, vendor_name, vendor_code, year_of_establishment, type_of_ownership,
+			type_of_business, is_ssi_msme, registration_no, cpcb_lic_no, sales_tax_no,
+			gst_no, pan_no, prepared_by, authorized_by, approved_by, status,
+			created_at, updated_at, created_by_user_id
+		FROM vendors WHERE id = $1`
+
+	var vendor models.Vendor
+	var vendorCode, yearOfEstablishment, typeOfOwnership, typeOfBusiness, isSsiMsme, registrationNo, cpcbLicNo, salesTaxNo, gstNo, panNo, preparedBy, authorizedBy, approvedBy sql.NullString
+
+	err := db.pool.QueryRow(context.Background(), query, vendorID).Scan(
+		&vendor.ID, &vendor.VendorName, &vendorCode, &yearOfEstablishment, &typeOfOwnership,
+		&typeOfBusiness, &isSsiMsme, &registrationNo, &cpcbLicNo, &salesTaxNo,
+		&gstNo, &panNo, &preparedBy, &authorizedBy, &approvedBy, &vendor.Status,
+		&vendor.CreatedAt, &vendor.UpdatedAt, &vendor.CreatedByUserID,
+	)
+
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return nil, err // Not found is a specific, expected error
+		}
+		// Log other, unexpected errors
+		log.Printf("Failed to scan vendor by ID %s: %v", vendorID, err)
+		return nil, err
+	}
+
+	if vendorCode.Valid {
+		vendor.VendorCode = &vendorCode.String
+	}
+	if yearOfEstablishment.Valid {
+		vendor.YearOfEstablishment = &yearOfEstablishment.String
+	}
+	if typeOfOwnership.Valid {
+		vendor.TypeOfOwnership = &typeOfOwnership.String
+	}
+	if typeOfBusiness.Valid {
+		vendor.TypeOfBusiness = &typeOfBusiness.String
+	}
+	if isSsiMsme.Valid {
+		vendor.IsSSI_MSME = &isSsiMsme.String
+	}
+	if registrationNo.Valid {
+		vendor.RegistrationNo = &registrationNo.String
+	}
+	if cpcbLicNo.Valid {
+		vendor.CPCBLicNo = &cpcbLicNo.String
+	}
+	if salesTaxNo.Valid {
+		vendor.SalesTaxNo = &salesTaxNo.String
+	}
+	if gstNo.Valid {
+		vendor.GSTNo = &gstNo.String
+	}
+	if panNo.Valid {
+		vendor.PANNo = &panNo.String
+	}
+	if preparedBy.Valid {
+		vendor.PreparedBy = &preparedBy.String
+	}
+	if authorizedBy.Valid {
+		vendor.AuthorizedBy = &authorizedBy.String
+	}
+	if approvedBy.Valid {
+		vendor.ApprovedBy = &approvedBy.String
+	}
+	// Load factories
+	factories, err := db.getVendorFactories(vendorID)
+	if err != nil {
+		return nil, err
+	}
+	vendor.Factories = factories
+
+	// Load documents
+	documents, err := db.getVendorDocuments(vendorID)
+	if err != nil {
+		return nil, err
+	}
+	vendor.Documents = documents
+
+	return &vendor, nil
+}
+
+// UpdateVendor updates vendor information
+func (db *DB) UpdateVendor(vendorID string, req *models.UpdateVendorRequest) error {
+	tx, err := db.pool.Begin(context.Background())
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+
+	// Build dynamic update query
+	setParts := []string{}
+	args := []interface{}{}
+	argCount := 1
+
+	if req.VendorName != nil {
+		setParts = append(setParts, fmt.Sprintf("vendor_name = $%d", argCount))
+		args = append(args, *req.VendorName)
+		argCount++
+	}
+	if req.VendorCode != nil {
+		setParts = append(setParts, fmt.Sprintf("vendor_code = $%d", argCount))
+		args = append(args, *req.VendorCode)
+		argCount++
+	}
+	if req.YearOfEstablishment != nil {
+		setParts = append(setParts, fmt.Sprintf("year_of_establishment = $%d", argCount))
+		args = append(args, *req.YearOfEstablishment)
+		argCount++
+	}
+	if req.TypeOfOwnership != nil {
+		setParts = append(setParts, fmt.Sprintf("type_of_ownership = $%d", argCount))
+		args = append(args, *req.TypeOfOwnership)
+		argCount++
+	}
+	if req.TypeOfBusiness != nil {
+		setParts = append(setParts, fmt.Sprintf("type_of_business = $%d", argCount))
+		args = append(args, *req.TypeOfBusiness)
+		argCount++
+	}
+	if req.Status != nil {
+		setParts = append(setParts, fmt.Sprintf("status = $%d", argCount))
+		args = append(args, *req.Status)
+		argCount++
+	}
+	if req.IsSSI_MSME != nil {
+		setParts = append(setParts, fmt.Sprintf("is_ssi_msme = $%d", argCount))
+		args = append(args, *req.IsSSI_MSME)
+		argCount++
+	}
+	if req.RegistrationNo != nil {
+		setParts = append(setParts, fmt.Sprintf("registration_no = $%d", argCount))
+		args = append(args, *req.RegistrationNo)
+		argCount++
+	}
+	if req.CPCBLicNo != nil {
+		setParts = append(setParts, fmt.Sprintf("cpcb_lic_no = $%d", argCount))
+		args = append(args, *req.CPCBLicNo)
+		argCount++
+	}
+	if req.SalesTaxNo != nil {
+		setParts = append(setParts, fmt.Sprintf("sales_tax_no = $%d", argCount))
+		args = append(args, *req.SalesTaxNo)
+		argCount++
+	}
+	if req.GSTNo != nil {
+		setParts = append(setParts, fmt.Sprintf("gst_no = $%d", argCount))
+		args = append(args, *req.GSTNo)
+		argCount++
+	}
+	if req.PANNo != nil {
+		setParts = append(setParts, fmt.Sprintf("pan_no = $%d", argCount))
+		args = append(args, *req.PANNo)
+		argCount++
+	}
+	if req.PreparedBy != nil {
+		setParts = append(setParts, fmt.Sprintf("prepared_by = $%d", argCount))
+		args = append(args, *req.PreparedBy)
+		argCount++
+	}
+	if req.AuthorizedBy != nil {
+		setParts = append(setParts, fmt.Sprintf("authorized_by = $%d", argCount))
+		args = append(args, *req.AuthorizedBy)
+		argCount++
+	}
+	if req.ApprovedBy != nil {
+		setParts = append(setParts, fmt.Sprintf("approved_by = $%d", argCount))
+		args = append(args, *req.ApprovedBy)
+		argCount++
+	}
+
+	setParts = append(setParts, "updated_at = NOW()")
+	args = append(args, vendorID)
+
+	if len(setParts) > 1 { // More than just updated_at
+		query := fmt.Sprintf("UPDATE vendors SET %s WHERE id = $%d", strings.Join(setParts, ", "), argCount)
+		_, err = tx.Exec(context.Background(), query, args...)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Update factories if provided
+	if req.Factories != nil {
+		// Delete existing factories
+		_, err = tx.Exec(context.Background(), "DELETE FROM vendor_factories WHERE vendor_id = $1", vendorID)
+		if err != nil {
+			return err
+		}
+
+		// Insert new factories
+		for i, factory := range req.Factories {
+			factoryQuery := `
+				INSERT INTO vendor_factories (vendor_id, factory_no, address1, address2, address3, mob_no, fax_no, email_id)
+				VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`
+
+			_, err = tx.Exec(context.Background(), factoryQuery,
+				vendorID, i+1, factory.Address1, factory.Address2, factory.Address3,
+				factory.MobNo, factory.FaxNo, factory.EmailID)
+
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return tx.Commit(context.Background())
+}
+
+// DeleteVendor deletes a vendor and all related data
+func (db *DB) DeleteVendor(vendorID string) error {
+	tx, err := db.pool.Begin(context.Background())
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(context.Background())
+
+	// Get document paths before deletion for cleanup
+	docs, err := db.getVendorDocuments(vendorID)
+	if err != nil {
+		return err
+	}
+
+	// Delete vendor (cascades will handle factories and documents)
+	_, err = tx.Exec(context.Background(), "DELETE FROM vendors WHERE id = $1", vendorID)
+	if err != nil {
+		return err
+	}
+
+	if err = tx.Commit(context.Background()); err != nil {
+		return err
+	}
+
+	// Clean up files from disk
+	for _, doc := range docs {
+		if err := os.Remove(doc.FilePath); err != nil {
+			fmt.Printf("Warning: Could not delete file %s: %v\n", doc.FilePath, err)
+		}
+	}
+
+	return nil
+}
+
+// Helper functions for loading related data
+func (db *DB) getVendorFactories(vendorID string) ([]models.VendorFactory, error) {
+	query := `
+		SELECT id, vendor_id, factory_no, address1, address2, address3, mob_no, fax_no, email_id
+		FROM vendor_factories WHERE vendor_id = $1 ORDER BY factory_no`
+
+	rows, err := db.pool.Query(context.Background(), query, vendorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var factories []models.VendorFactory
+	for rows.Next() {
+		var factory models.VendorFactory
+		var address1, address2, address3, mobNo, faxNo, emailID sql.NullString
+		if err := rows.Scan(
+			&factory.ID, &factory.VendorID, &factory.FactoryNo, &address1, &address2,
+			&address3, &mobNo, &faxNo, &emailID,
+		); err != nil {
+			return nil, err
+		}
+		if address1.Valid {
+			factory.Address1 = &address1.String
+		}
+		if address2.Valid {
+			factory.Address2 = &address2.String
+		}
+		if address3.Valid {
+			factory.Address3 = &address3.String
+		}
+		if mobNo.Valid {
+			factory.MobNo = &mobNo.String
+		}
+		if faxNo.Valid {
+			factory.FaxNo = &faxNo.String
+		}
+		if emailID.Valid {
+			factory.EmailID = &emailID.String
+		}
+		factories = append(factories, factory)
+	}
+	return factories, nil
+}
+
+func (db *DB) getVendorDocuments(vendorID string) ([]models.VendorDocument, error) {
+	query := `
+		SELECT id, vendor_id, file_name, original_name, file_size, file_type, file_path, uploaded_at
+		FROM vendor_documents WHERE vendor_id = $1 ORDER BY uploaded_at DESC`
+
+	rows, err := db.pool.Query(context.Background(), query, vendorID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var documents []models.VendorDocument
+	for rows.Next() {
+		var doc models.VendorDocument
+		if err := rows.Scan(
+			&doc.ID, &doc.VendorID, &doc.FileName, &doc.OriginalName, &doc.FileSize,
+			&doc.FileType, &doc.FilePath, &doc.UploadedAt,
+		); err != nil {
+			return nil, err
+		}
+		documents = append(documents, doc)
+	}
+	return documents, nil
+}
+
+// Document management functions
+func (db *DB) CreateVendorDocument(doc *models.VendorDocument) (*models.VendorDocument, error) {
+	query := `
+		INSERT INTO vendor_documents (vendor_id, file_name, original_name, file_size, file_type, file_path)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		RETURNING id, uploaded_at`
+
+	err := db.pool.QueryRow(context.Background(), query,
+		doc.VendorID, doc.FileName, doc.OriginalName, doc.FileSize, doc.FileType, doc.FilePath,
+	).Scan(&doc.ID, &doc.UploadedAt)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return doc, nil
+}
+
+func (db *DB) GetVendorDocument(docID int) (*models.VendorDocument, error) {
+	query := `
+		SELECT id, vendor_id, file_name, original_name, file_size, file_type, file_path, uploaded_at
+		FROM vendor_documents WHERE id = $1`
+
+	var doc models.VendorDocument
+	err := db.pool.QueryRow(context.Background(), query, docID).Scan(
+		&doc.ID, &doc.VendorID, &doc.FileName, &doc.OriginalName, &doc.FileSize,
+		&doc.FileType, &doc.FilePath, &doc.UploadedAt,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &doc, nil
+}
+
+func (db *DB) DeleteVendorDocument(docID int) error {
+	_, err := db.pool.Exec(context.Background(), "DELETE FROM vendor_documents WHERE id = $1", docID)
+	return err
 }

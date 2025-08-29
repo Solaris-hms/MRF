@@ -1,16 +1,13 @@
 import axios from 'axios';
 import authService from './authService';
 
-// --- THIS IS THE FIX ---
-// The API_URL is now a relative path. It will automatically use the
-// domain of the frontend, which is exactly what we want when using Nginx.
 const API_URL = '/api';
 
 const api = axios.create({
     baseURL: API_URL,
 });
 
-// Add a request interceptor to include the token in all requests
+// Request interceptor - include token in requests
 api.interceptors.request.use(
     (config) => {
         const token = authService.getCurrentToken();
@@ -24,7 +21,21 @@ api.interceptors.request.use(
     }
 );
 
-// --- Admin Functions ---
+// Response interceptor - handle 401 errors automatically
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response?.status === 401) {
+            console.log('401 Unauthorized - redirecting to login');
+            authService.logout();
+            // Redirect to login page
+            window.location.href = '/login';
+        }
+        return Promise.reject(error);
+    }
+);
+
+// All your existing API functions remain the same
 export const getPendingUsers = () => { return api.get('/admin/pending-users'); };
 export const getAllRoles = () => { return api.get('/admin/roles'); };
 export const getAllUsers = () => { return api.get('/admin/users'); };
@@ -35,7 +46,6 @@ export const getAllPermissions = () => { return api.get('/admin/permissions'); }
 export const getPermissionsForRole = (roleId) => { return api.get(`/admin/roles/${roleId}/permissions`); };
 export const updatePermissionsForRole = (roleId, permissionIds) => { return api.put(`/admin/roles/${roleId}/permissions`, { permission_ids: permissionIds }); };
 
-// --- Operations Functions ---
 export const createInwardEntry = (entryData) => { return api.post('/operations/inward-entries', entryData); };
 export const getPendingEntries = () => { return api.get('/operations/inward-entries/pending'); };
 export const completeInwardEntry = (entryId, tareWeight, material = null) => {
@@ -73,12 +83,9 @@ export const createSaleEntry = (saleData) => {
     return api.post('/operations/sales', payload);
 };
 
-// --- Partner Functions ---
 export const getAllPartners = () => { return api.get('/operations/partners'); };
 export const createPartner = (name, type) => { return api.post('/operations/partners', { name: name, type: type }); };
 
-
-// --- NEW EMPLOYEE FUNCTIONS ---
 export const getEmployees = () => {
     return api.get('/operations/employees');
 };
@@ -92,11 +99,10 @@ export const deleteEmployee = (id) => {
     return api.delete(`/operations/employees/${id}`);
 };
 
-// --- NEW ATTENDANCE FUNCTIONS ---
-export const getAttendance = (month) => { // month is 'YYYY-MM'
+export const getAttendance = (month) => {
     return api.get(`/operations/attendance?month=${month}`);
 };
-export const saveAttendance = (date, records) => { // date is 'YYYY-MM-DD'
+export const saveAttendance = (date, records) => {
     return api.post('/operations/attendance', { date, records });
 };
 export const getAssets = () => {
@@ -117,4 +123,46 @@ export const uploadAssetImage = (id, imageData) => {
             'Content-Type': 'multipart/form-data',
         },
     });
+};
+export const createVendor = (vendorData) => {
+    return api.post('/operations/vendors', vendorData);
+};
+
+export const getVendors = () => {
+    return api.get('/operations/vendors');
+};
+
+export const getVendor = (vendorId) => {
+    return api.get(`/operations/vendors/${vendorId}`);
+};
+
+export const updateVendor = (vendorId, vendorData) => {
+    return api.put(`/operations/vendors/${vendorId}`, vendorData);
+};
+
+export const deleteVendor = (vendorId) => {
+    return api.delete(`/operations/vendors/${vendorId}`);
+};
+
+export const uploadVendorDocuments = (vendorId, files) => {
+    const formData = new FormData();
+    files.forEach(file => {
+        formData.append('documents', file);
+    });
+    
+    return api.post(`/operations/vendors/${vendorId}/documents`, formData, {
+        headers: {
+            'Content-Type': 'multipart/form-data',
+        },
+    });
+};
+
+export const downloadVendorDocument = (docId) => {
+    return api.get(`/operations/vendor-documents/${docId}/download`, {
+        responseType: 'blob',
+    });
+};
+
+export const deleteVendorDocument = (docId) => {
+    return api.delete(`/operations/vendor-documents/${docId}`);
 };

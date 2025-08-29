@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { FaGlobe, FaChartBar, FaCog, FaSignOutAlt, FaChevronRight, FaTruck, FaMoneyBillWave, FaUserCheck, FaUsers, FaHardHat, FaImages } from 'react-icons/fa';
+import { FaGlobe, FaChartBar, FaCog, FaSignOutAlt, FaChevronRight, FaTruck, FaMoneyBillWave, FaUserCheck, FaUsers, FaHardHat, FaUserTie, FaHandshake } from 'react-icons/fa';
 import authService from '../../services/authService';
 
 const Sidebar = ({ setSidebarOpen }) => {
@@ -21,6 +21,7 @@ const Sidebar = ({ setSidebarOpen }) => {
   const canViewAnalytics = user?.permissions?.includes('view:dashboard');
   const canManageUsers = user?.permissions?.includes('manage:users');
   const canViewTransactions = user?.permissions?.includes('view:cashbook');
+  const canViewVendors = user?.permissions?.includes('view:vendors');
   
   const navSections = [
     { 
@@ -43,7 +44,18 @@ const Sidebar = ({ setSidebarOpen }) => {
         { name: 'Inventory', path: '/inventory' },
         { name: 'Attendance', path: '/attendance' },
         { name: 'Employees', path: '/employees' },
-        { name: 'Asset Management.', path: '/assets' },
+        { name: 'Asset Management', path: '/assets' },
+      ]
+    },
+    {
+      title: 'Partners',
+      icon: <FaHandshake />,
+      show: canViewVendors, // Now properly controlled by permission
+      links: [
+        { name: 'Vendor Registration', path: '/vendor-registration' },
+        // You can add more partner-related links here later
+        // { name: 'Vendor Management', path: '/vendor-management' },
+        // { name: 'Partner Directory', path: '/partners' }
       ]
     },
     {

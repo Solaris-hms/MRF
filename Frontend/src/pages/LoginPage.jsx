@@ -14,9 +14,24 @@ const LoginPage = () => {
     e.preventDefault();
     setError('');
     setLoading(true);
+    
     try {
       await authService.login(email, password);
-      navigate('/'); // Navigate to dashboard on successful login
+      
+      // --- THIS IS THE NEW SMART REDIRECT LOGIC ---
+      // Get the user's permissions after successful login
+      const user = authService.getCurrentUser();
+      const permissions = user?.permissions || [];
+      
+      // Check if user has dashboard permission
+      if (permissions.includes('view:dashboard')) {
+        console.log('User has dashboard access - redirecting to dashboard');
+        navigate('/'); // Dashboard
+      } else {
+        console.log('User does not have dashboard access - redirecting to receiving');
+        navigate('/receiving'); // Receiving page (default for everyone)
+      }
+      
     } catch (err) {
       const errorMessage = err.response?.data?.error || 'Login failed. Please check your credentials.';
       setError(errorMessage);

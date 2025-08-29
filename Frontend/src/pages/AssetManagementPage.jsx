@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
     FaHardHat, FaPlus, FaEdit, FaTrash, FaTimes, FaTag, FaCalendarAlt, 
     FaDollarSign, FaInfoCircle, FaImage, FaCamera, FaFileUpload, FaSearch,
-    FaFilter, FaDownload, FaChartLine, FaBuilding
+    FaFilter, FaDownload, FaChartLine, FaBuilding, FaFileInvoiceDollar
 } from 'react-icons/fa';
 import { getAssets, createAsset, updateAsset, deleteAsset, uploadAssetImage } from '../services/apiService';
 
@@ -296,8 +296,6 @@ const AssetManagementPage = () => {
                                     filteredAssets.map((asset, index) => (
                                         <tr key={asset.id} className={`hover:bg-slate-50 transition-colors duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
                                             <td className="px-6 py-4">
-                                                {/* --- THIS IS THE FIX --- */}
-                                                {/* We now use the separate, robust AssetThumbnail component */}
                                                 <AssetThumbnail asset={asset} />
                                             </td>
                                             <td className="px-6 py-4">
@@ -390,7 +388,7 @@ const StatCard = ({ title, value, icon, color }) => (
 const AssetModal = ({ isOpen, onClose, onSave, asset }) => {
     const [formData, setFormData] = useState({
         name: '', category: '', purchase_date: '', value: '', status: 'Active',
-        location: '', serial_number: '', supplier: ''
+        location: '', invoice_number: '', supplier: ''
     });
     const [imageFile, setImageFile] = useState(null);
     const [preview, setPreview] = useState(null);
@@ -405,14 +403,15 @@ const AssetModal = ({ isOpen, onClose, onSave, asset }) => {
                 value: asset.value || '', 
                 status: asset.status || 'Active',
                 location: asset.location || '',
-                serial_number: asset.serial_number || '',
+                // Changed from serial_number to invoice_number
+                invoice_number: asset.serial_number || '',
                 supplier: asset.supplier || ''
             });
             setPreview(asset.fullImageUrl);
         } else {
             setFormData({
                 name: '', category: '', purchase_date: '', value: '', status: 'Active',
-                location: '', serial_number: '', supplier: ''
+                location: '', invoice_number: '', supplier: ''
             });
             setPreview(null);
         }
@@ -448,7 +447,13 @@ const AssetModal = ({ isOpen, onClose, onSave, asset }) => {
     const handleSubmit = (e) => {
         e.preventDefault();
         if (validateForm()) {
-            onSave(formData, imageFile);
+            // Convert invoice_number back to serial_number for backend compatibility
+            const dataToSend = {
+                ...formData,
+                serial_number: formData.invoice_number
+            };
+            delete dataToSend.invoice_number;
+            onSave(dataToSend, imageFile);
         }
     };
     
@@ -513,12 +518,12 @@ const AssetModal = ({ isOpen, onClose, onSave, asset }) => {
                         />
                         
                         <InputField 
-                            label="Serial Number" 
-                            name="serial_number" 
-                            value={formData.serial_number} 
-                            onChange={(e) => setFormData({...formData, serial_number: e.target.value})} 
-                            icon={<FaTag />} 
-                            placeholder="e.g., HBM-2022-001" 
+                            label="Invoice Number" 
+                            name="invoice_number" 
+                            value={formData.invoice_number} 
+                            onChange={(e) => setFormData({...formData, invoice_number: e.target.value})} 
+                            icon={<FaFileInvoiceDollar />} 
+                            placeholder="e.g., INV-2024-001" 
                         />
                         
                         <InputField 
@@ -564,6 +569,8 @@ const AssetModal = ({ isOpen, onClose, onSave, asset }) => {
                             type="number" 
                             required 
                             error={errors.value}
+                            // Fix for scrolling issue
+                            onWheel={(e) => e.target.blur()}
                         />
                     </div>
 
@@ -615,13 +622,19 @@ const AssetModal = ({ isOpen, onClose, onSave, asset }) => {
     );
 };
 
-const InputField = ({ label, icon, error, ...props }) => (
+const InputField = ({ label, icon, error, onWheel, ...props }) => (
     <div>
         <label className="block text-sm font-semibold text-slate-700 mb-2">{label}</label>
         <div className="relative">
             {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
             <input 
-                {...props} 
+                {...props}
+                onWheel={onWheel || ((e) => {
+                    // Fix for scroll issue on number inputs
+                    if (props.type === 'number') {
+                        e.target.blur();
+                    }
+                })}
                 className={`w-full h-12 pl-12 pr-4 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
                     error 
                         ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
