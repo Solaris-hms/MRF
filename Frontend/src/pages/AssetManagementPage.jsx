@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-    FaHardHat, FaPlus, FaEdit, FaTrash, FaTimes, FaTag, FaCalendarAlt, 
+import {
+    FaHardHat, FaPlus, FaEdit, FaTrash, FaTimes, FaTag, FaCalendarAlt,
     FaDollarSign, FaInfoCircle, FaImage, FaCamera, FaFileUpload, FaSearch,
     FaFilter, FaDownload, FaChartLine, FaBuilding, FaFileInvoiceDollar
 } from 'react-icons/fa';
@@ -40,7 +40,7 @@ const AssetManagementPage = () => {
         try {
             setLoading(true);
             const res = await getAssets();
-            
+
             const assetsWithFullUrl = (res.data || []).map(asset => ({
                 ...asset,
                 fullImageUrl: asset.image_url
@@ -62,7 +62,7 @@ const AssetManagementPage = () => {
     useEffect(() => {
         let filtered = assets;
         if (searchTerm) {
-            filtered = filtered.filter(asset => 
+            filtered = filtered.filter(asset =>
                 asset.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 (asset.id && asset.id.toLowerCase().includes(searchTerm.toLowerCase())) ||
                 (asset.category && asset.category.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -97,7 +97,7 @@ const AssetManagementPage = () => {
             if (editingAsset) {
                 const updatedAsset = { ...editingAsset, ...dataToSend };
                 await updateAsset(editingAsset.id, updatedAsset);
-                
+
                 if (imageFile) {
                     const formData = new FormData();
                     formData.append('image', imageFile);
@@ -107,10 +107,10 @@ const AssetManagementPage = () => {
                 }
             } else {
                 const newAssetId = `ASSET-${String(Date.now()).slice(-5)}`;
-                const newAsset = { 
-                    ...dataToSend, 
-                    id: newAssetId, 
-                    image_url: '' 
+                const newAsset = {
+                    ...dataToSend,
+                    id: newAssetId,
+                    image_url: ''
                 };
 
                 const createdAssetResponse = await createAsset(newAsset);
@@ -131,7 +131,7 @@ const AssetManagementPage = () => {
             alert('Failed to save asset.');
         }
     };
-    
+
     const handleDelete = async (assetId) => {
         if (window.confirm('Are you sure you want to delete this asset? This action cannot be undone.')) {
             try {
@@ -164,8 +164,8 @@ const AssetManagementPage = () => {
                                 <p className="text-slate-600 mt-1">Manage and track your company assets</p>
                             </div>
                         </div>
-                        <button 
-                            onClick={() => openModal()} 
+                        <button
+                            onClick={() => openModal()}
                             className="flex items-center gap-3 px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-indigo-700 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
                         >
                             <FaPlus className="text-lg" />
@@ -175,29 +175,29 @@ const AssetManagementPage = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <StatCard 
-                        title="Total Assets" 
-                        value={assets.length} 
-                        icon={<FaHardHat />} 
-                        color="from-blue-500 to-blue-600" 
+                    <StatCard
+                        title="Total Assets"
+                        value={assets.length}
+                        icon={<FaHardHat />}
+                        color="from-blue-500 to-blue-600"
                     />
-                    <StatCard 
-                        title="Active Assets" 
-                        value={activeAssets} 
-                        icon={<FaChartLine />} 
-                        color="from-green-500 to-emerald-600" 
+                    <StatCard
+                        title="Active Assets"
+                        value={activeAssets}
+                        icon={<FaChartLine />}
+                        color="from-green-500 to-emerald-600"
                     />
-                    <StatCard 
-                        title="Under Maintenance" 
-                        value={maintenanceAssets} 
-                        icon={<FaInfoCircle />} 
-                        color="from-yellow-500 to-orange-600" 
+                    <StatCard
+                        title="Under Maintenance"
+                        value={maintenanceAssets}
+                        icon={<FaInfoCircle />}
+                        color="from-yellow-500 to-orange-600"
                     />
-                    <StatCard 
-                        title="Total Value" 
-                        value={`₹${(totalValue / 100000).toFixed(1)}L`} 
-                        icon={<FaDollarSign />} 
-                        color="from-purple-500 to-indigo-600" 
+                    <StatCard
+                        title="Total Value"
+                        value={`₹${(totalValue / 100000).toFixed(1)}L`}
+                        icon={<FaDollarSign />}
+                        color="from-purple-500 to-indigo-600"
                     />
                 </div>
 
@@ -215,7 +215,7 @@ const AssetManagementPage = () => {
                                 />
                             </div>
                         </div>
-                        
+
                         <div className="flex gap-3">
                             <select
                                 value={statusFilter}
@@ -227,7 +227,7 @@ const AssetManagementPage = () => {
                                     <option key={status} value={status}>{status}</option>
                                 ))}
                             </select>
-                            
+
                             <select
                                 value={categoryFilter}
                                 onChange={(e) => setCategoryFilter(e.target.value)}
@@ -238,7 +238,7 @@ const AssetManagementPage = () => {
                                     <option key={category} value={category}>{category}</option>
                                 ))}
                             </select>
-                            
+
                             <button className="h-12 px-4 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors duration-200 flex items-center gap-2">
                                 <FaDownload />
                                 Export
@@ -254,7 +254,7 @@ const AssetManagementPage = () => {
                             Assets Overview ({filteredAssets.length} items)
                         </h2>
                     </div>
-                    
+
                     <div className="overflow-x-auto">
                         <table className="min-w-full">
                             <thead className="bg-slate-800 text-white">
@@ -283,7 +283,7 @@ const AssetManagementPage = () => {
                                             <div className="flex flex-col items-center space-y-4">
                                                 <FaHardHat className="text-6xl text-slate-300" />
                                                 <p className="text-slate-600 text-lg">No assets found matching your criteria</p>
-                                                <button 
+                                                <button
                                                     onClick={() => openModal()}
                                                     className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors duration-200"
                                                 >
@@ -336,15 +336,15 @@ const AssetManagementPage = () => {
                                             </td>
                                             <td className="px-6 py-4 text-center">
                                                 <div className="flex justify-center space-x-3">
-                                                    <button 
-                                                        onClick={() => openModal(asset)} 
+                                                    <button
+                                                        onClick={() => openModal(asset)}
                                                         className="p-2 text-blue-600 hover:text-white hover:bg-blue-600 rounded-lg transition-all duration-200 border border-blue-200 hover:border-blue-600"
                                                         title="Edit Asset"
                                                     >
                                                         <FaEdit />
                                                     </button>
-                                                    <button 
-                                                        onClick={() => handleDelete(asset.id)} 
+                                                    <button
+                                                        onClick={() => handleDelete(asset.id)}
                                                         className="p-2 text-red-600 hover:text-white hover:bg-red-600 rounded-lg transition-all duration-200 border border-red-200 hover:border-red-600"
                                                         title="Delete Asset"
                                                     >
@@ -397,14 +397,13 @@ const AssetModal = ({ isOpen, onClose, onSave, asset }) => {
     useEffect(() => {
         if (asset) {
             setFormData({
-                name: asset.name || '', 
-                category: asset.category || '', 
+                name: asset.name || '',
+                category: asset.category || '',
                 purchase_date: asset.purchase_date || '',
-                value: asset.value || '', 
+                value: asset.value || '',
                 status: asset.status || 'Active',
                 location: asset.location || '',
-                // Changed from serial_number to invoice_number
-                invoice_number: asset.serial_number || '',
+                invoice_number: asset.invoice_number || '', // Correctly use invoice_number
                 supplier: asset.supplier || ''
             });
             setPreview(asset.fullImageUrl);
@@ -418,7 +417,7 @@ const AssetModal = ({ isOpen, onClose, onSave, asset }) => {
         setImageFile(null);
         setErrors({});
     }, [asset, isOpen]);
-	
+
     const handleFileChange = (e) => {
         const file = e.target.files[0];
         if (file) {
@@ -439,7 +438,7 @@ const AssetModal = ({ isOpen, onClose, onSave, asset }) => {
         if (!formData.value || parseInt(formData.value) <= 0) newErrors.value = 'Valid asset value is required';
         if (!formData.purchase_date) newErrors.purchase_date = 'Purchase date is required';
         if (!formData.location.trim()) newErrors.location = 'Location is required';
-        
+
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -447,25 +446,21 @@ const AssetModal = ({ isOpen, onClose, onSave, asset }) => {
     const handleSubmit = (e) => {
         e.preventDefault();
         if (validateForm()) {
-            // Convert invoice_number back to serial_number for backend compatibility
-            const dataToSend = {
-                ...formData,
-                serial_number: formData.invoice_number
-            };
-            delete dataToSend.invoice_number;
-            onSave(dataToSend, imageFile);
+            // The backend now accepts invoice_number directly.
+            // No conversion is needed.
+            onSave(formData, imageFile);
         }
     };
-    
+
     if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
             <form onSubmit={handleSubmit} className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto border border-slate-200">
                 <div className="sticky top-0 bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-6 rounded-t-2xl">
-                    <button 
-                        type="button" 
-                        onClick={onClose} 
+                    <button
+                        type="button"
+                        onClick={onClose}
                         className="absolute top-4 right-4 text-white hover:text-slate-200 p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-all duration-200"
                     >
                         <FaTimes size={20} />
@@ -473,7 +468,7 @@ const AssetModal = ({ isOpen, onClose, onSave, asset }) => {
                     <h2 className="text-2xl font-bold">{asset ? 'Edit Asset' : 'Add New Asset'}</h2>
                     <p className="text-blue-100 mt-1">Fill in the details below to {asset ? 'update' : 'create'} your asset</p>
                 </div>
-                
+
                 <div className="p-6 space-y-6">
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-2">Asset Image</label>
@@ -506,91 +501,91 @@ const AssetModal = ({ isOpen, onClose, onSave, asset }) => {
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <InputField 
-                            label="Asset Name" 
-                            name="name" 
-                            value={formData.name} 
-                            onChange={(e) => setFormData({...formData, name: e.target.value})} 
-                            icon={<FaHardHat />} 
-                            placeholder="e.g., Hydraulic Baling Machine" 
-                            required 
+                        <InputField
+                            label="Asset Name"
+                            name="name"
+                            value={formData.name}
+                            onChange={(e) => setFormData({...formData, name: e.target.value})}
+                            icon={<FaHardHat />}
+                            placeholder="e.g., Hydraulic Baling Machine"
+                            required
                             error={errors.name}
                         />
-                        
-                        <InputField 
-                            label="Invoice Number" 
-                            name="invoice_number" 
-                            value={formData.invoice_number} 
-                            onChange={(e) => setFormData({...formData, invoice_number: e.target.value})} 
-                            icon={<FaFileInvoiceDollar />} 
-                            placeholder="e.g., INV-2024-001" 
+
+                        <InputField
+                            label="Invoice Number"
+                            name="invoice_number"
+                            value={formData.invoice_number}
+                            onChange={(e) => setFormData({...formData, invoice_number: e.target.value})}
+                            icon={<FaFileInvoiceDollar />}
+                            placeholder="e.g., INV-2024-001"
                         />
-                        
-                        <InputField 
-                            label="Category" 
-                            name="category" 
-                            value={formData.category} 
-                            onChange={(e) => setFormData({...formData, category: e.target.value})} 
-                            icon={<FaTag />} 
-                            placeholder="e.g., Machinery" 
-                            required 
+
+                        <InputField
+                            label="Category"
+                            name="category"
+                            value={formData.category}
+                            onChange={(e) => setFormData({...formData, category: e.target.value})}
+                            icon={<FaTag />}
+                            placeholder="e.g., Machinery"
+                            required
                             error={errors.category}
                         />
-                        
-                        <InputField 
-                            label="Location" 
-                            name="location" 
-                            value={formData.location} 
-                            onChange={(e) => setFormData({...formData, location: e.target.value})} 
-                            icon={<FaBuilding />} 
-                            placeholder="e.g., Factory Floor A" 
-                            required 
+
+                        <InputField
+                            label="Location"
+                            name="location"
+                            value={formData.location}
+                            onChange={(e) => setFormData({...formData, location: e.target.value})}
+                            icon={<FaBuilding />}
+                            placeholder="e.g., Factory Floor A"
+                            required
                             error={errors.location}
                         />
-                        
-                        <InputField 
-                            label="Purchase Date" 
-                            name="purchase_date" 
-                            value={formData.purchase_date} 
-                            onChange={(e) => setFormData({...formData, purchase_date: e.target.value})} 
-                            icon={<FaCalendarAlt />} 
-                            type="date" 
-                            required 
+
+                        <InputField
+                            label="Purchase Date"
+                            name="purchase_date"
+                            value={formData.purchase_date}
+                            onChange={(e) => setFormData({...formData, purchase_date: e.target.value})}
+                            icon={<FaCalendarAlt />}
+                            type="date"
+                            required
                             error={errors.purchase_date}
                         />
-                        
-                        <InputField 
-                            label="Asset Value (₹)" 
-                            name="value" 
-                            value={formData.value} 
-                            onChange={(e) => setFormData({...formData, value: e.target.value})} 
-                            icon={<FaDollarSign />} 
-                            placeholder="e.g., 500000" 
-                            type="number" 
-                            required 
+
+                        <InputField
+                            label="Asset Value (₹)"
+                            name="value"
+                            value={formData.value}
+                            onChange={(e) => setFormData({...formData, value: e.target.value})}
+                            icon={<FaDollarSign />}
+                            placeholder="e.g., 500000"
+                            type="number"
+                            required
                             error={errors.value}
                             // Fix for scrolling issue
                             onWheel={(e) => e.target.blur()}
                         />
                     </div>
 
-                    <InputField 
-                        label="Supplier" 
-                        name="supplier" 
-                        value={formData.supplier} 
-                        onChange={(e) => setFormData({...formData, supplier: e.target.value})} 
-                        icon={<FaBuilding />} 
-                        placeholder="e.g., Industrial Solutions Ltd." 
+                    <InputField
+                        label="Supplier"
+                        name="supplier"
+                        value={formData.supplier}
+                        onChange={(e) => setFormData({...formData, supplier: e.target.value})}
+                        icon={<FaBuilding />}
+                        placeholder="e.g., Industrial Solutions Ltd."
                     />
-                    
+
                     <div>
                         <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
                         <div className="relative">
                             <FaInfoCircle className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <select 
-                                name="status" 
-                                value={formData.status} 
-                                onChange={(e) => setFormData({...formData, status: e.target.value})} 
+                            <select
+                                name="status"
+                                value={formData.status}
+                                onChange={(e) => setFormData({...formData, status: e.target.value})}
                                 className="w-full h-12 pl-12 pr-4 border-2 border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white transition-all duration-200"
                             >
                                 <option value="Active">Active</option>
@@ -603,15 +598,15 @@ const AssetModal = ({ isOpen, onClose, onSave, asset }) => {
                 </div>
 
                 <div className="flex justify-end space-x-4 p-6 border-t border-slate-200 bg-slate-50 rounded-b-2xl">
-                    <button 
-                        type="button" 
-                        onClick={onClose} 
+                    <button
+                        type="button"
+                        onClick={onClose}
                         className="px-8 py-3 bg-slate-300 hover:bg-slate-400 text-slate-700 font-semibold rounded-xl transition-all duration-200 transform hover:scale-105"
                     >
                         Cancel
                     </button>
-                    <button 
-                        type="submit" 
+                    <button
+                        type="submit"
                         className="px-8 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg transition-all duration-200 transform hover:scale-105"
                     >
                         {asset ? 'Update Asset' : 'Create Asset'}
@@ -627,7 +622,7 @@ const InputField = ({ label, icon, error, onWheel, ...props }) => (
         <label className="block text-sm font-semibold text-slate-700 mb-2">{label}</label>
         <div className="relative">
             {icon && <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
-            <input 
+            <input
                 {...props}
                 onWheel={onWheel || ((e) => {
                     // Fix for scroll issue on number inputs
@@ -636,10 +631,10 @@ const InputField = ({ label, icon, error, onWheel, ...props }) => (
                     }
                 })}
                 className={`w-full h-12 pl-12 pr-4 border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 ${
-                    error 
-                        ? 'border-red-300 focus:border-red-500 focus:ring-red-500' 
+                    error
+                        ? 'border-red-300 focus:border-red-500 focus:ring-red-500'
                         : 'border-slate-200 focus:border-transparent'
-                }`} 
+                }`}
             />
         </div>
         {error && <p className="text-red-500 text-sm mt-1">{error}</p>}
