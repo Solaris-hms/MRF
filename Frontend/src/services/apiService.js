@@ -64,24 +64,27 @@ export const getMaterialSales = () => {
 };
 
 export const createSaleEntry = (saleData) => {
+    // --- THIS IS THE FIX ---
+    // We now use parseFloat() to ensure all numeric fields are sent as numbers, not strings.
     const payload = {
         inward_entry_id: saleData.id,
         party_id: saleData.party_id,
         transporter_id: saleData.transporter_id,
         sale_date: saleData.date,
-        driver_name: saleData.driver_name,
-        driver_mobile: saleData.driver_mobile,
-        rate: saleData.rate,
-        gst_percentage: saleData.gst_percentage,
+        driver_name: saleData.driverName,
+        driver_mobile: saleData.driverMobile,
+        rate: parseFloat(saleData.rate) || 0,
+        gst_percentage: parseFloat(saleData.gst) || 0,
         amount: saleData.amount,
         gst_amount: saleData.gst_amount,
         total_amount: saleData.total_amount_with_gst,
-        mode_of_payment: saleData.mode_of_payment,
+        mode_of_payment: saleData.modeOfPayment,
         remark: saleData.remark,
-        transportation_expense: saleData.transportation_expense,
+        transportation_expense: parseFloat(saleData.transportation_expense) || 0,
     };
     return api.post('/operations/sales', payload);
 };
+// --- END OF FIX ---
 
 export const getAllPartners = () => { return api.get('/operations/partners'); };
 export const createPartner = (name, type) => { return api.post('/operations/partners', { name: name, type: type }); };
@@ -165,4 +168,8 @@ export const downloadVendorDocument = (docId) => {
 
 export const deleteVendorDocument = (docId) => {
     return api.delete(`/operations/vendor-documents/${docId}`);
+};
+
+export const deleteInwardEntry = (entryId) => {
+    return api.delete(`/operations/inward-entries/${entryId}`);
 };

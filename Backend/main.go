@@ -67,6 +67,7 @@ func main() {
 		ops.GET("/inward-entries/pending", middleware.PermissionMiddleware("view:inward_entries"), h.GetPendingInwardEntries)
 		ops.GET("/inward-entries/completed", middleware.PermissionMiddleware("view:inward_entries"), h.GetCompletedInwardEntries)
 		ops.PUT("/inward-entries/:entryId/complete", middleware.PermissionMiddleware("complete:inward_entry"), h.CompleteInwardEntry)
+		ops.DELETE("/inward-entries/:entryId", middleware.PermissionMiddleware("delete:inward_entry"), h.DeleteInwardEntry)
 
 		ops.GET("/partners", h.GetAllPartners)
 		ops.POST("/partners", h.CreatePartner)

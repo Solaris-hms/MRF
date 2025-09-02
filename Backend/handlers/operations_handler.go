@@ -211,3 +211,19 @@ func (h *Handlers) GetMaterialSales(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, sales)
 }
+func (h *Handlers) DeleteInwardEntry(c *gin.Context) {
+	entryIDStr := c.Param("entryId")
+	entryID, err := strconv.Atoi(entryIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid entry ID"})
+		return
+	}
+
+	err = h.DB.DeleteInwardEntry(entryID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete entry"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Entry deleted successfully"})
+}

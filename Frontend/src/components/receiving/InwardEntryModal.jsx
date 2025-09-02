@@ -89,7 +89,7 @@ const InwardEntryModal = ({ isOpen, onClose, entryType, sources, destinations, m
                         </div>
                     )}
                     
-                    <InputField label="Gross Weight (Tons)" name="grossWeight" type="number" step="0.001" value={formData.grossWeight} onChange={handleChange} icon={<FaBalanceScale />} required />
+                    <InputField label={isDryWaste ? "Loaded Vehicle Weight (Tons)" : "Empty Vehicle Weight (Tons)"} name="grossWeight" type="number" step="0.001" value={formData.grossWeight} onChange={handleChange} icon={<FaBalanceScale />} required />
                     
                     {isDryWaste ? (
                         <div>

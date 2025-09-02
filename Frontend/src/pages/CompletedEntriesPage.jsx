@@ -100,23 +100,31 @@ const CompletedEntriesPage = () => {
                     <th className="th">Date / Time</th>
                     <th className="th">Vehicle #</th>
                     <th className="th">Source / Destination</th>
-                    <th className="th text-right">Gross Wt. (Tons)</th>
-                    <th className="th text-right">Tare Wt. (Tons)</th>
+                    <th className="th">Material</th>
+                    <th className="th text-right">Loaded Wt. (Tons)</th>
+                    <th className="th text-right">Empty Wt. (Tons)</th>
                     <th className="th text-right !text-blue-600">Net Wt. (Tons)</th>
                 </tr>
             </thead>
             <tbody className="bg-white divide-y divide-slate-200">
-              {filteredEntries.length > 0 ? filteredEntries.map(entry => (
-                <tr key={entry.id} className="hover:bg-slate-50">
-                  <td className="td">{new Date(entry.completed_at).toLocaleDateString()} <span className="text-slate-500">{new Date(entry.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></td>
-                  <td className="td font-medium text-slate-900">{entry.vehicle_number}</td>
-                  <td className="td">{entry.source_name}</td>
-                  <td className="td text-right">{(entry.gross_weight_tons ?? 0).toFixed(3)}</td>
-                  <td className="td text-right">{(entry.tare_weight_tons ?? 0).toFixed(3)}</td>
-                  <td className="td text-right font-bold text-lg text-blue-600">{(entry.net_weight_tons ?? 0).toFixed(3)}</td>
-                </tr>
-              )) : (
-                <tr><td colSpan="6" className="text-center py-10 text-slate-500">No completed entries match your criteria.</td></tr>
+              {filteredEntries.length > 0 ? filteredEntries.map(entry => {
+                const isDryWasteIn = entry.entry_type === 'Dry Waste';
+                const loadedWeight = isDryWasteIn ? entry.gross_weight_tons : entry.tare_weight_tons;
+                const emptyWeight = isDryWasteIn ? entry.tare_weight_tons : entry.gross_weight_tons;
+
+                return (
+                    <tr key={entry.id} className="hover:bg-slate-50">
+                        <td className="td">{new Date(entry.completed_at).toLocaleDateString()} <span className="text-slate-500">{new Date(entry.completed_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></td>
+                        <td className="td font-medium text-slate-900">{entry.vehicle_number}</td>
+                        <td className="td">{entry.source_name}</td>
+                        <td className="td">{entry.material}</td>
+                        <td className="td text-right">{(loadedWeight ?? 0).toFixed(3)}</td>
+                        <td className="td text-right">{(emptyWeight ?? 0).toFixed(3)}</td>
+                        <td className="td text-right font-bold text-lg text-blue-600">{(entry.net_weight_tons ?? 0).toFixed(3)}</td>
+                    </tr>
+                )
+              }) : (
+                <tr><td colSpan="7" className="text-center py-10 text-slate-500">No completed entries match your criteria.</td></tr>
               )}
             </tbody>
           </table>

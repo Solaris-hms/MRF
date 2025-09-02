@@ -1379,3 +1379,8 @@ func (db *DB) DeleteVendorDocument(docID int) error {
 	_, err := db.pool.Exec(context.Background(), "DELETE FROM vendor_documents WHERE id = $1", docID)
 	return err
 }
+func (db *DB) DeleteInwardEntry(entryID int) error {
+	query := `DELETE FROM inward_entries WHERE id = $1 AND status = 'Pending'`
+	_, err := db.pool.Exec(context.Background(), query, entryID)
+	return err
+}

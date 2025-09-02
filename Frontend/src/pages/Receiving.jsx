@@ -3,7 +3,7 @@ import { FaTruckLoading, FaTruck } from 'react-icons/fa';
 import PendingEntriesTable from '../components/receiving/PendingEntriesTable';
 import CompleteEntryModal from '../components/receiving/CompleteEntryModal';
 import InwardEntryModal from '../components/receiving/InwardEntryModal';
-import { getPendingEntries, createInwardEntry, completeInwardEntry, getAllPartners, createPartner } from '../services/apiService';
+import { getPendingEntries, createInwardEntry, completeInwardEntry, getAllPartners, createPartner, deleteInwardEntry } from '../services/apiService'; // Import deleteInwardEntry
 // --- THIS IS THE FIX ---
 import { EXPORTABLE_MATERIALS } from '../config/materials';
 
@@ -115,6 +115,19 @@ const ReceivingPage = () => {
         }
     };
 
+    // --- THIS IS THE NEW DELETE HANDLER ---
+    const handleDeleteEntry = async (entryId) => {
+        if (window.confirm('Are you sure you want to delete this pending entry? This action cannot be undone.')) {
+            try {
+                await deleteInwardEntry(entryId);
+                fetchData(); // Refresh the data to remove the deleted entry
+            } catch (err) {
+                alert('Failed to delete entry. Please try again.');
+                console.error(err);
+            }
+        }
+    };
+
     return (
         <div className="space-y-8">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -136,7 +149,13 @@ const ReceivingPage = () => {
                 </button>
             </div>
 
-            <PendingEntriesTable entries={entries} loading={loading} error={error} onWeighOut={handleOpenCompleteModal} />
+            <PendingEntriesTable 
+                entries={entries} 
+                loading={loading} 
+                error={error} 
+                onWeighOut={handleOpenCompleteModal} 
+                onDelete={handleDeleteEntry} // Pass the new handler
+            />
 
             {isEntryModalOpen && (
                 <InwardEntryModal

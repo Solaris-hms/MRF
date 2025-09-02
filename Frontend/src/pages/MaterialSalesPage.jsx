@@ -22,7 +22,7 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
         driverMobile: '',
         rate: '',
         gst: '18',
-        modeOfPayment: '',
+        modeOfPayment: 'Cash', // --- THIS IS THE FIX: Set a default value ---
         remark: '',
         transportationExpense: '',
     });
@@ -32,7 +32,7 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
         if (entry) {
             setFormData({
                 driverName: '', driverMobile: '', rate: '', gst: '18',
-                modeOfPayment: '', remark: '', transportationExpense: ''
+                modeOfPayment: 'Cash', remark: '', transportationExpense: '' // --- THIS IS THE FIX: Reset to default ---
             });
             setSelectedTransporter(null);
         }
@@ -69,8 +69,6 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4">
-            {/* --- THIS IS THE FIX --- */}
-            {/* Added max-h-[90vh] and overflow-y-auto to the modal container. */}
             <div className="relative bg-white rounded-xl shadow-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
                 <button type="button" onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
                     <FaTimes size={20} />
@@ -104,7 +102,21 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
                         <InputField label="Driver Mobile No" value={formData.driverMobile} onChange={(e) => setFormData({ ...formData, driverMobile: e.target.value })} />
                         <InputField label="Rate per Ton (INR)" type="number" value={formData.rate} onChange={(e) => setFormData({ ...formData, rate: e.target.value })} />
                         <InputField label="GST (%)" type="number" value={formData.gst} onChange={(e) => setFormData({ ...formData, gst: e.target.value })} />
-                        <InputField label="Mode of Payment" value={formData.modeOfPayment} onChange={(e) => setFormData({ ...formData, modeOfPayment: e.target.value })} />
+                        
+                        {/* --- THIS IS THE FIX: Replaced InputField with a dropdown select --- */}
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Mode of Payment</label>
+                            <select 
+                                value={formData.modeOfPayment} 
+                                onChange={(e) => setFormData({ ...formData, modeOfPayment: e.target.value })}
+                                className="w-full p-2 border border-slate-300 rounded-lg h-10 bg-slate-50"
+                            >
+                                <option value="Cash">Cash</option>
+                                <option value="Bill">Bill</option>
+                            </select>
+                        </div>
+                        {/* --- END OF FIX --- */}
+
                         <InputField label="Transportation Expense" type="number" value={formData.transportationExpense} icon={<FaTruck/>} onChange={(e) => setFormData({ ...formData, transportationExpense: e.target.value })} />
                     </div>
                      <div className="mt-4">

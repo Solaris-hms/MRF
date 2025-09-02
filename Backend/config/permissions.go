@@ -18,6 +18,7 @@ var AllPermissions = []string{
 	"create:inward_entry",
 	"view:inward_entries",
 	"complete:inward_entry",
+	"delete:inward_entry", // --- THIS IS THE NEW LINE ---
 	"log:inbound_material",
 
 	// Sorting
