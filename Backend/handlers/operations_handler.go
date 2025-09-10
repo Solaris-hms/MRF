@@ -227,3 +227,38 @@ func (h *Handlers) DeleteInwardEntry(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"message": "Entry deleted successfully"})
 }
+func (h *Handlers) AdjustInventory(c *gin.Context) {
+	var req models.AdjustInventoryRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		return
+	}
+
+	userID, _ := c.Get("userID")
+
+	newLogEntry, err := h.DB.AdjustInventory(&req, userID.(int))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to adjust inventory: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":  "Inventory adjusted successfully",
+		"logEntry": newLogEntry,
+	})
+}
+
+func (h *Handlers) GetInventoryAudits(c *gin.Context) {
+	logs, err := h.DB.GetInventoryAudits()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch audit logs"})
+		return
+	}
+
+	if logs == nil {
+		c.JSON(http.StatusOK, []models.InventoryAudit{})
+		return
+	}
+
+	c.JSON(http.StatusOK, logs)
+}

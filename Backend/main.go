@@ -76,6 +76,8 @@ func main() {
 		ops.GET("/sorting-logs", middleware.PermissionMiddleware("create:sorting_log"), h.GetSortingLogs)
 
 		ops.GET("/inventory", h.GetInventory)
+		ops.POST("/inventory/adjust", h.AdjustInventory)
+		ops.GET("/inventory/audits", h.GetInventoryAudits)
 
 		ops.GET("/cashbook", middleware.PermissionMiddleware("view:cashbook"), h.GetCashbookData)
 		ops.POST("/cashbook", middleware.PermissionMiddleware("view:cashbook"), h.CreateCashbookTransaction)

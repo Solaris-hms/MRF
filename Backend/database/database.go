@@ -1384,3 +1384,108 @@ func (db *DB) DeleteInwardEntry(entryID int) error {
 	_, err := db.pool.Exec(context.Background(), query, entryID)
 	return err
 }
+func (db *DB) AdjustInventory(req *models.AdjustInventoryRequest, userID int) (*models.InventoryAudit, error) {
+	tx, err := db.pool.Begin(context.Background())
+	if err != nil {
+		return nil, err
+	}
+	defer tx.Rollback(context.Background())
+
+	// 1. Get current stock and lock the row
+	var currentStockKg float64
+	var materialName string
+	queryGetStock := `SELECT material_name, current_stock_kg FROM inventory WHERE id = $1 FOR UPDATE`
+	err = tx.QueryRow(context.Background(), queryGetStock, req.MaterialID).Scan(&materialName, &currentStockKg)
+	if err != nil {
+		return nil, fmt.Errorf("could not find material: %w", err)
+	}
+	currentStockTons := currentStockKg / 1000.0
+
+	// 2. Calculate new stock
+	newStockTons := currentStockTons + req.AdjustmentAmount
+	newStockKg := newStockTons * 1000.0
+
+	// 3. Update inventory
+	queryUpdateStock := `UPDATE inventory SET current_stock_kg = $1 WHERE id = $2`
+	_, err = tx.Exec(context.Background(), queryUpdateStock, newStockKg, req.MaterialID)
+	if err != nil {
+		return nil, fmt.Errorf("could not update stock: %w", err)
+	}
+
+	// 4. Create audit log entry
+	var newLog models.InventoryAudit
+	var auditedByUserName string
+	queryInsertLog := `
+        INSERT INTO inventory_audits 
+            (material_id, adjustment_tons, old_stock_tons, new_stock_tons, reason, audited_by_user_id)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING id, created_at`
+	err = tx.QueryRow(context.Background(), queryInsertLog,
+		req.MaterialID, req.AdjustmentAmount, currentStockTons, newStockTons, req.Reason, userID,
+	).Scan(&newLog.ID, &newLog.Timestamp)
+	if err != nil {
+		return nil, fmt.Errorf("could not create audit log: %w", err)
+	}
+
+	// Get user's name for the response
+	err = tx.QueryRow(context.Background(), `SELECT full_name FROM users WHERE id = $1`, userID).Scan(&auditedByUserName)
+	if err != nil {
+		return nil, fmt.Errorf("could not get user name: %w", err)
+	}
+
+	// 5. Commit transaction
+	if err := tx.Commit(context.Background()); err != nil {
+		return nil, err
+	}
+
+	// Populate the rest of the response object
+	newLog.MaterialName = materialName
+	newLog.AdjustmentAmount = req.AdjustmentAmount
+	newLog.OldStock = currentStockTons
+	newLog.NewStock = newStockTons
+	newLog.Reason = req.Reason
+	newLog.AuditedBy = auditedByUserName
+
+	return &newLog, nil
+}
+
+func (db *DB) GetInventoryAudits() ([]models.InventoryAudit, error) {
+	query := `
+        SELECT 
+            a.id,
+            a.created_at,
+            i.material_name,
+            a.adjustment_tons,
+            a.old_stock_tons,
+            a.new_stock_tons,
+            a.reason,
+            u.full_name
+        FROM 
+            inventory_audits a
+        JOIN 
+            inventory i ON a.material_id = i.id
+        JOIN 
+            users u ON a.audited_by_user_id = u.id
+        ORDER BY 
+            a.created_at DESC
+        LIMIT 100` // Limit to last 100 entries for performance
+
+	rows, err := db.pool.Query(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var logs []models.InventoryAudit
+	for rows.Next() {
+		var log models.InventoryAudit
+		if err := rows.Scan(
+			&log.ID, &log.Timestamp, &log.MaterialName, &log.AdjustmentAmount,
+			&log.OldStock, &log.NewStock, &log.Reason, &log.AuditedBy,
+		); err != nil {
+			return nil, err
+		}
+		logs = append(logs, log)
+	}
+	return logs, nil
+}

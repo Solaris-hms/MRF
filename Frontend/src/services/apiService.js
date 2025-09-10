@@ -35,7 +35,7 @@ api.interceptors.response.use(
     }
 );
 
-// All your existing API functions remain the same
+// --- Admin Functions ---
 export const getPendingUsers = () => { return api.get('/admin/pending-users'); };
 export const getAllRoles = () => { return api.get('/admin/roles'); };
 export const getAllUsers = () => { return api.get('/admin/users'); };
@@ -46,6 +46,7 @@ export const getAllPermissions = () => { return api.get('/admin/permissions'); }
 export const getPermissionsForRole = (roleId) => { return api.get(`/admin/roles/${roleId}/permissions`); };
 export const updatePermissionsForRole = (roleId, permissionIds) => { return api.put(`/admin/roles/${roleId}/permissions`, { permission_ids: permissionIds }); };
 
+// --- Inward Entry Functions ---
 export const createInwardEntry = (entryData) => { return api.post('/operations/inward-entries', entryData); };
 export const getPendingEntries = () => { return api.get('/operations/inward-entries/pending'); };
 export const completeInwardEntry = (entryId, tareWeight, material = null) => {
@@ -53,19 +54,23 @@ export const completeInwardEntry = (entryId, tareWeight, material = null) => {
     return api.put(`/operations/inward-entries/${entryId}/complete`, payload);
 };
 export const getCompletedEntries = () => { return api.get('/operations/inward-entries/completed'); };
+export const deleteInwardEntry = (entryId) => {
+    return api.delete(`/operations/inward-entries/${entryId}`);
+};
+
+// --- Sorting, Inventory, and Cashbook ---
 export const createSortingLog = (logData) => { return api.post('/operations/sorting-log', logData); };
 export const getSortingLogs = () => { return api.get('/operations/sorting-logs'); };
 export const getInventory = () => { return api.get('/operations/inventory'); };
 export const getCashbookData = (date) => { return api.get(`/operations/cashbook?date=${date}`); };
 export const createCashbookTransaction = (transactionData) => { return api.post('/operations/cashbook', transactionData); };
 
+// --- Sales Functions ---
 export const getMaterialSales = () => {
     return api.get('/operations/sales');
 };
 
 export const createSaleEntry = (saleData) => {
-    // --- THIS IS THE FIX ---
-    // We now use parseFloat() to ensure all numeric fields are sent as numbers, not strings.
     const payload = {
         inward_entry_id: saleData.id,
         party_id: saleData.party_id,
@@ -84,11 +89,12 @@ export const createSaleEntry = (saleData) => {
     };
     return api.post('/operations/sales', payload);
 };
-// --- END OF FIX ---
 
+// --- Partner Functions ---
 export const getAllPartners = () => { return api.get('/operations/partners'); };
 export const createPartner = (name, type) => { return api.post('/operations/partners', { name: name, type: type }); };
 
+// --- Employee & Attendance Functions ---
 export const getEmployees = () => {
     return api.get('/operations/employees');
 };
@@ -108,6 +114,8 @@ export const getAttendance = (month) => {
 export const saveAttendance = (date, records) => {
     return api.post('/operations/attendance', { date, records });
 };
+
+// --- Asset Functions ---
 export const getAssets = () => {
     return api.get('/operations/assets');
 };
@@ -127,6 +135,8 @@ export const uploadAssetImage = (id, imageData) => {
         },
     });
 };
+
+// --- Vendor Functions ---
 export const createVendor = (vendorData) => {
     return api.post('/operations/vendors', vendorData);
 };
@@ -170,6 +180,16 @@ export const deleteVendorDocument = (docId) => {
     return api.delete(`/operations/vendor-documents/${docId}`);
 };
 
-export const deleteInwardEntry = (entryId) => {
-    return api.delete(`/operations/inward-entries/${entryId}`);
+// --- NEW AUDIT FUNCTIONS ---
+export const adjustInventory = (materialId, adjustmentAmount, reason) => {
+    const payload = {
+        material_id: materialId,
+        adjustment_amount: adjustmentAmount,
+        reason: reason,
+    };
+    return api.post('/operations/inventory/adjust', payload);
+};
+
+export const getAuditLogs = () => {
+    return api.get('/operations/inventory/audits');
 };
