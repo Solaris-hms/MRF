@@ -223,3 +223,19 @@ type Asset struct {
 	CreatedAt     time.Time `json:"created_at"`
 	UpdatedAt     time.Time `json:"updated_at"`
 }
+type AdjustInventoryRequest struct {
+	MaterialID       int     `json:"material_id" binding:"required"`
+	AdjustmentAmount float64 `json:"adjustment_amount" binding:"required"`
+	Reason           string  `json:"reason" binding:"required"`
+}
+
+type InventoryAudit struct {
+	ID               int       `json:"id"`
+	Timestamp        time.Time `json:"timestamp"`
+	MaterialName     string    `json:"material_name"`
+	AdjustmentAmount float64   `json:"adjustment_amount"`
+	OldStock         float64   `json:"old_stock"`
+	NewStock         float64   `json:"new_stock"`
+	Reason           string    `json:"reason"`
+	AuditedBy        string    `json:"audited_by"`
+}

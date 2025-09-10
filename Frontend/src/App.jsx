@@ -20,6 +20,8 @@ import EmployeePage from './pages/EmployeePage';
 import AssetManagementPage from './pages/AssetManagementPage';
 import VendorRegistrationPage from './pages/VendorRegistrationPage';
 import authService from './services/authService';
+import AuditPage from './pages/AuditPage'; // Add this import
+
 
 const ProtectedRoute = () => {
   const token = authService.getCurrentToken();
@@ -129,6 +131,8 @@ function App() {
             <Route path="/employees" element={<EmployeePage />} />
             <Route path="/assets" element={<AssetManagementPage />} />
             <Route path="/vendor-registration" element={<VendorRegistrationPage />} />
+            <Route path="/audit" element={<AuditPage />} /> {/* Add this line */}
+
 
         </Route>
       </Route>

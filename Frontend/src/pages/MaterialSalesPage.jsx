@@ -22,17 +22,18 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
         driverMobile: '',
         rate: '',
         gst: '18',
-        modeOfPayment: 'Cash', // --- THIS IS THE FIX: Set a default value ---
+        modeOfPayment: 'Bill',
         remark: '',
         transportationExpense: '',
     });
     const [selectedTransporter, setSelectedTransporter] = useState(null);
+    const [rateUnit, setRateUnit] = useState('ton');
 
     useEffect(() => {
         if (entry) {
             setFormData({
                 driverName: '', driverMobile: '', rate: '', gst: '18',
-                modeOfPayment: 'Cash', remark: '', transportationExpense: '' // --- THIS IS THE FIX: Reset to default ---
+                modeOfPayment: 'Bill', remark: '', transportationExpense: ''
             });
             setSelectedTransporter(null);
         }
@@ -44,8 +45,9 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
 
     const netWeight = parseFloat(entry.net_weight_tons) || 0;
     const rate = parseFloat(formData.rate) || 0;
+    const ratePerTon = rateUnit === 'kg' ? rate * 1000 : rate;
     const gstPercentage = parseFloat(formData.gst) || 0;
-    const amount = netWeight * rate;
+    const amount = netWeight * ratePerTon;
     const gstAmount = amount * (gstPercentage / 100);
     const totalAmountWithGST = amount + gstAmount;
 
@@ -59,7 +61,7 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
             ...entry,
             party_id: party.id,
             transporter: selectedTransporter,
-            rate: rate,
+            rate: ratePerTon,
             amount: amount,
             gst_amount: gstAmount,
             total_amount_with_gst: totalAmountWithGST,
@@ -100,10 +102,18 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
                         </div>
                         <InputField label="Driver Name" value={formData.driverName} onChange={(e) => setFormData({ ...formData, driverName: e.target.value })} />
                         <InputField label="Driver Mobile No" value={formData.driverMobile} onChange={(e) => setFormData({ ...formData, driverMobile: e.target.value })} />
-                        <InputField label="Rate per Ton (INR)" type="number" value={formData.rate} onChange={(e) => setFormData({ ...formData, rate: e.target.value })} />
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Rate (INR)</label>
+                            <div className="flex">
+                                <input type="number" value={formData.rate} onChange={(e) => setFormData({ ...formData, rate: e.target.value })} className="w-full p-2 border border-slate-300 rounded-l-lg h-10 bg-slate-50" />
+                                <select value={rateUnit} onChange={(e) => setRateUnit(e.target.value)} className="p-2 border-t border-b border-r border-slate-300 rounded-r-lg h-10 bg-slate-100">
+                                    <option value="ton">per Ton</option>
+                                    <option value="kg">per Kilo</option>
+                                </select>
+                            </div>
+                        </div>
                         <InputField label="GST (%)" type="number" value={formData.gst} onChange={(e) => setFormData({ ...formData, gst: e.target.value })} />
                         
-                        {/* --- THIS IS THE FIX: Replaced InputField with a dropdown select --- */}
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Mode of Payment</label>
                             <select 
@@ -111,11 +121,10 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
                                 onChange={(e) => setFormData({ ...formData, modeOfPayment: e.target.value })}
                                 className="w-full p-2 border border-slate-300 rounded-lg h-10 bg-slate-50"
                             >
-                                <option value="Cash">Cash</option>
                                 <option value="Bill">Bill</option>
+                                <option value="Cash">Cash</option>
                             </select>
                         </div>
-                        {/* --- END OF FIX --- */}
 
                         <InputField label="Transportation Expense" type="number" value={formData.transportationExpense} icon={<FaTruck/>} onChange={(e) => setFormData({ ...formData, transportationExpense: e.target.value })} />
                     </div>
