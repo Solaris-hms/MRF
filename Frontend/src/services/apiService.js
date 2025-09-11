@@ -193,3 +193,14 @@ export const adjustInventory = (materialId, adjustmentAmount, reason) => {
 export const getAuditLogs = () => {
     return api.get('/operations/inventory/audits');
 };
+export const createPlantHeadReport = (reportData) => {
+    return api.post('/operations/reports/plant-head', reportData);
+};
+
+export const createAsstPlantHeadReport = (reportData) => {
+    return api.post('/operations/reports/asst-plant-head', reportData);
+};
+
+export const createWorkforceMaterialReport = (reportData) => {
+    return api.post('/operations/reports/workforce-material', reportData);
+};

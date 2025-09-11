@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math"
@@ -120,15 +121,23 @@ func (db *DB) UpdateUser(userID int, req *models.UpdateUserRequest) error {
 	if err != nil {
 		return err
 	}
-	roleQuery := `
-        INSERT INTO user_roles (user_id, role_id) 
-        VALUES ($1, $2)
-        ON CONFLICT (user_id) 
-        DO UPDATE SET role_id = EXCLUDED.role_id`
-	_, err = tx.Exec(context.Background(), roleQuery, userID, req.RoleID)
+
+	// --- THIS IS THE FIX ---
+	// The previous "INSERT ... ON CONFLICT" query was incorrect for the current database schema.
+	// This new logic first deletes the user's existing roles and then inserts the new one,
+	// which correctly handles the update.
+	deleteRoleQuery := `DELETE FROM user_roles WHERE user_id = $1`
+	_, err = tx.Exec(context.Background(), deleteRoleQuery, userID)
 	if err != nil {
 		return err
 	}
+
+	insertRoleQuery := `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`
+	_, err = tx.Exec(context.Background(), insertRoleQuery, userID, req.RoleID)
+	if err != nil {
+		return err
+	}
+
 	return tx.Commit(context.Background())
 }
 
@@ -1488,4 +1497,111 @@ func (db *DB) GetInventoryAudits() ([]models.InventoryAudit, error) {
 		logs = append(logs, log)
 	}
 	return logs, nil
+}
+
+// Append these functions to Backend/database/database.go
+
+func (db *DB) CreatePlantHeadReport(report *models.PlantHeadReport) error {
+	query := `
+		INSERT INTO plant_head_reports (
+			report_date, waste_processed_tons, waste_unprocessed_tons, rdf_processed_tons, afr_processed_tons,
+			ragpicker_count, machine_up_time_hours, machine_down_time_hours, sorting_accuracy_percent,
+			machine_issues, safety_incident, vip_visit, equipment_maintenance, plant_start_time,
+			shredder_up_time_hours, shredder_down_time_hours, trip_count, lost_time_hours, created_by_user_id
+		) VALUES (
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19
+		)
+		ON CONFLICT (report_date, created_by_user_id) DO UPDATE SET
+			waste_processed_tons = EXCLUDED.waste_processed_tons,
+			waste_unprocessed_tons = EXCLUDED.waste_unprocessed_tons,
+			rdf_processed_tons = EXCLUDED.rdf_processed_tons,
+			afr_processed_tons = EXCLUDED.afr_processed_tons,
+			ragpicker_count = EXCLUDED.ragpicker_count,
+			machine_up_time_hours = EXCLUDED.machine_up_time_hours,
+			machine_down_time_hours = EXCLUDED.machine_down_time_hours,
+			sorting_accuracy_percent = EXCLUDED.sorting_accuracy_percent,
+			machine_issues = EXCLUDED.machine_issues,
+			safety_incident = EXCLUDED.safety_incident,
+			vip_visit = EXCLUDED.vip_visit,
+			equipment_maintenance = EXCLUDED.equipment_maintenance,
+			plant_start_time = EXCLUDED.plant_start_time,
+			shredder_up_time_hours = EXCLUDED.shredder_up_time_hours,
+			shredder_down_time_hours = EXCLUDED.shredder_down_time_hours,
+			trip_count = EXCLUDED.trip_count,
+			lost_time_hours = EXCLUDED.lost_time_hours,
+			created_at = NOW();
+	`
+	_, err := db.pool.Exec(context.Background(), query,
+		report.ReportDate, report.WasteProcessedTons, report.WasteUnprocessedTons, report.RdfProcessedTons, report.AfrProcessedTons,
+		report.RagpickerCount, report.MachineUpTimeHours, report.MachineDownTimeHours, report.SortingAccuracyPercent,
+		report.MachineIssues, report.SafetyIncident, report.VipVisit, report.EquipmentMaintenance, report.PlantStartTime,
+		report.ShredderUpTimeHours, report.ShredderDownTimeHours, report.TripCount, report.LostTimeHours, report.CreatedByUserID,
+	)
+	return err
+}
+
+func (db *DB) CreateAsstPlantHeadReport(report *models.AsstPlantHeadReport) error {
+	query := `
+		INSERT INTO asst_plant_head_reports (
+			report_date, waste_processed_tons, waste_unprocessed_tipping_tons, rdf_processed_tons, afr_processed_tons,
+			machine_up_time_hours, machine_down_time_hours, machine_issues, safety_incident, equipment_maintenance,
+			shredder_up_time_hours, shredder_down_time_hours, trip_count, lost_time_hours, manpower_night_shift, created_by_user_id
+		) VALUES (
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
+		)
+		ON CONFLICT (report_date, created_by_user_id) DO UPDATE SET
+			waste_processed_tons = EXCLUDED.waste_processed_tons,
+			waste_unprocessed_tipping_tons = EXCLUDED.waste_unprocessed_tipping_tons,
+			rdf_processed_tons = EXCLUDED.rdf_processed_tons,
+			afr_processed_tons = EXCLUDED.afr_processed_tons,
+			machine_up_time_hours = EXCLUDED.machine_up_time_hours,
+			machine_down_time_hours = EXCLUDED.machine_down_time_hours,
+			machine_issues = EXCLUDED.machine_issues,
+			safety_incident = EXCLUDED.safety_incident,
+			equipment_maintenance = EXCLUDED.equipment_maintenance,
+			shredder_up_time_hours = EXCLUDED.shredder_up_time_hours,
+			shredder_down_time_hours = EXCLUDED.shredder_down_time_hours,
+			trip_count = EXCLUDED.trip_count,
+			lost_time_hours = EXCLUDED.lost_time_hours,
+			manpower_night_shift = EXCLUDED.manpower_night_shift,
+			created_at = NOW();
+	`
+	_, err := db.pool.Exec(context.Background(), query,
+		report.ReportDate, report.WasteProcessedTons, report.WasteUnprocessedTippingTons, report.RdfProcessedTons, report.AfrProcessedTons,
+		report.MachineUpTimeHours, report.MachineDownTimeHours, report.MachineIssues, report.SafetyIncident, report.EquipmentMaintenance,
+		report.ShredderUpTimeHours, report.ShredderDownTimeHours, report.TripCount, report.LostTimeHours, report.ManpowerNightShift, report.CreatedByUserID,
+	)
+	return err
+}
+
+func (db *DB) CreateWorkforceMaterialReport(report *models.WorkforceMaterialReport) error {
+	recyclablesJSON, err := json.Marshal(report.RecyclablesDispatched)
+	if err != nil {
+		return err
+	}
+
+	query := `
+		INSERT INTO workforce_material_reports (
+			report_date, workers_present_count, diesel_consumption_liters, electricity_consumption_units, power_factor,
+			rdf_dispatched_tons, afr_dispatched_tons, inert_tons, transportation_expenses, recyclables_dispatched, created_by_user_id
+		) VALUES (
+			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
+		)
+		ON CONFLICT (report_date, created_by_user_id) DO UPDATE SET
+			workers_present_count = EXCLUDED.workers_present_count,
+			diesel_consumption_liters = EXCLUDED.diesel_consumption_liters,
+			electricity_consumption_units = EXCLUDED.electricity_consumption_units,
+			power_factor = EXCLUDED.power_factor,
+			rdf_dispatched_tons = EXCLUDED.rdf_dispatched_tons,
+			afr_dispatched_tons = EXCLUDED.afr_dispatched_tons,
+			inert_tons = EXCLUDED.inert_tons,
+			transportation_expenses = EXCLUDED.transportation_expenses,
+			recyclables_dispatched = EXCLUDED.recyclables_dispatched,
+			created_at = NOW();
+	`
+	_, err = db.pool.Exec(context.Background(), query,
+		report.ReportDate, report.WorkersPresentCount, report.DieselConsumptionLiters, report.ElectricityConsumptionUnits, report.PowerFactor,
+		report.RdfDispatchedTons, report.AfrDispatchedTons, report.InertTons, report.TransportationExpenses, recyclablesJSON, report.CreatedByUserID,
+	)
+	return err
 }

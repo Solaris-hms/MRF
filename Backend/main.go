@@ -107,6 +107,10 @@ func main() {
 		ops.POST("/vendors/:id/documents", middleware.PermissionMiddleware("manage:vendor_documents"), h.UploadVendorDocument)
 		ops.GET("/vendor-documents/:docId/download", middleware.PermissionMiddleware("view:vendors"), h.DownloadVendorDocument)
 		ops.DELETE("/vendor-documents/:docId", middleware.PermissionMiddleware("manage:vendor_documents"), h.DeleteVendorDocument)
+		ops.POST("/reports/plant-head", middleware.PermissionMiddleware("create:plant_head_report"), h.CreatePlantHeadReport)
+		ops.POST("/reports/asst-plant-head", middleware.PermissionMiddleware("create:asst_plant_head_report"), h.CreateAsstPlantHeadReport)
+		ops.POST("/reports/workforce-material", middleware.PermissionMiddleware("create:workforce_material_report"), h.CreateWorkforceMaterialReport)
+
 	}
 
 	log.Println("Server starting on port 8080...")

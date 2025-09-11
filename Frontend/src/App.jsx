@@ -21,6 +21,7 @@ import AssetManagementPage from './pages/AssetManagementPage';
 import VendorRegistrationPage from './pages/VendorRegistrationPage';
 import authService from './services/authService';
 import AuditPage from './pages/AuditPage'; // Add this import
+import DailyReportingPage from './pages/DailyReportingPage';
 
 
 const ProtectedRoute = () => {
@@ -131,7 +132,8 @@ function App() {
             <Route path="/employees" element={<EmployeePage />} />
             <Route path="/assets" element={<AssetManagementPage />} />
             <Route path="/vendor-registration" element={<VendorRegistrationPage />} />
-            <Route path="/audit" element={<AuditPage />} /> {/* Add this line */}
+            <Route path="/audit" element={<AuditPage />} />
+            <Route path="/daily-reporting" element={<DailyReportingPage />} />
 
 
         </Route>

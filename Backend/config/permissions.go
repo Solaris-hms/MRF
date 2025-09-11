@@ -18,7 +18,7 @@ var AllPermissions = []string{
 	"create:inward_entry",
 	"view:inward_entries",
 	"complete:inward_entry",
-	"delete:inward_entry", // --- THIS IS THE NEW LINE ---
+	"delete:inward_entry",
 	"log:inbound_material",
 
 	// Sorting
@@ -31,12 +31,18 @@ var AllPermissions = []string{
 	"edit:assets",
 	"delete:assets",
 
-	// Vendors - NEW PERMISSIONS
+	// Vendors
 	"view:vendors",
 	"create:vendors",
 	"edit:vendors",
 	"delete:vendors",
 	"manage:vendor_documents",
+
+	// --- NEW REPORTING PERMISSIONS ---
+	"create:plant_head_report",
+	"create:asst_plant_head_report",
+	"create:workforce_material_report",
+	"view:reports",
 
 	// Reports
 	"generate:reports",

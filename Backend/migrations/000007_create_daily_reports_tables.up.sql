@@ -1,0 +1,63 @@
+CREATE TABLE IF NOT EXISTS plant_head_reports (
+    id SERIAL PRIMARY KEY,
+    report_date DATE NOT NULL,
+    waste_processed_tons NUMERIC(10, 3),
+    waste_unprocessed_tons NUMERIC(10, 3),
+    rdf_processed_tons NUMERIC(10, 3),
+    afr_processed_tons NUMERIC(10, 3),
+    ragpicker_count INTEGER,
+    machine_up_time_hours NUMERIC(5, 2),
+    machine_down_time_hours NUMERIC(5, 2),
+    sorting_accuracy_percent NUMERIC(5, 2),
+    machine_issues TEXT,
+    safety_incident TEXT,
+    vip_visit TEXT,
+    equipment_maintenance TEXT,
+    plant_start_time VARCHAR(50),
+    shredder_up_time_hours NUMERIC(5, 2),
+    shredder_down_time_hours NUMERIC(5, 2),
+    trip_count INTEGER,
+    lost_time_hours NUMERIC(5, 2),
+    created_by_user_id INTEGER NOT NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(report_date, created_by_user_id)
+);
+
+CREATE TABLE IF NOT EXISTS asst_plant_head_reports (
+    id SERIAL PRIMARY KEY,
+    report_date DATE NOT NULL,
+    waste_processed_tons NUMERIC(10, 3),
+    waste_unprocessed_tipping_tons NUMERIC(10, 3),
+    rdf_processed_tons NUMERIC(10, 3),
+    afr_processed_tons NUMERIC(10, 3),
+    machine_up_time_hours NUMERIC(5, 2),
+    machine_down_time_hours NUMERIC(5, 2),
+    machine_issues TEXT,
+    safety_incident TEXT,
+    equipment_maintenance TEXT,
+    shredder_up_time_hours NUMERIC(5, 2),
+    shredder_down_time_hours NUMERIC(5, 2),
+    trip_count INTEGER,
+    lost_time_hours NUMERIC(5, 2),
+    manpower_night_shift INTEGER,
+    created_by_user_id INTEGER NOT NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(report_date, created_by_user_id)
+);
+
+CREATE TABLE IF NOT EXISTS workforce_material_reports (
+    id SERIAL PRIMARY KEY,
+    report_date DATE NOT NULL,
+    workers_present_count INTEGER,
+    diesel_consumption_liters NUMERIC(10, 2),
+    electricity_consumption_units NUMERIC(10, 2),
+    power_factor NUMERIC(5, 2),
+    rdf_dispatched_tons NUMERIC(10, 3),
+    afr_dispatched_tons NUMERIC(10, 3),
+    inert_tons NUMERIC(10, 3),
+    transportation_expenses NUMERIC(10, 2),
+    recyclables_dispatched JSONB,
+    created_by_user_id INTEGER NOT NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(report_date, created_by_user_id)
+);
