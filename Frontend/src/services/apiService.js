@@ -162,7 +162,7 @@ export const uploadVendorDocuments = (vendorId, files) => {
     files.forEach(file => {
         formData.append('documents', file);
     });
-    
+
     return api.post(`/operations/vendors/${vendorId}/documents`, formData, {
         headers: {
             'Content-Type': 'multipart/form-data',
@@ -203,4 +203,17 @@ export const createAsstPlantHeadReport = (reportData) => {
 
 export const createWorkforceMaterialReport = (reportData) => {
     return api.post('/operations/reports/workforce-material', reportData);
+};
+
+// --- Reporting Functions ---
+export const getPlantHeadReports = () => {
+    return api.get('/operations/reports/plant-head');
+};
+
+export const getAsstPlantHeadReports = () => {
+    return api.get('/operations/reports/asst-plant-head');
+};
+
+export const getWorkforceMaterialReports = () => {
+    return api.get('/operations/reports/workforce-material');
 };

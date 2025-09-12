@@ -20,8 +20,9 @@ import EmployeePage from './pages/EmployeePage';
 import AssetManagementPage from './pages/AssetManagementPage';
 import VendorRegistrationPage from './pages/VendorRegistrationPage';
 import authService from './services/authService';
-import AuditPage from './pages/AuditPage'; // Add this import
+import AuditPage from './pages/AuditPage';
 import DailyReportingPage from './pages/DailyReportingPage';
+import ReportsPage from './pages/ReportsPage'; // Import the new page
 
 
 const ProtectedRoute = () => {
@@ -35,25 +36,18 @@ const PermissionRoute = ({ requiredPermission }) => {
     return hasPermission ? <Outlet /> : <Navigate to="/" replace />;
 };
 
-const PlaceholderPage = ({ title }) => (
-  <div className="bg-white p-8 rounded-xl shadow-lg">
-    <h1 className="text-2xl font-bold text-slate-800">{title}</h1>
-    <p className="mt-4 text-slate-600">Page content for {title.toLowerCase()} will be built here.</p>
-  </div>
-);
-
 const MainLayout = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   return (
     <div className="flex h-screen bg-slate-100">
-        <div 
-            className={`fixed inset-y-0 left-0 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} 
+        <div
+            className={`fixed inset-y-0 left-0 transform ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             md:relative md:translate-x-0 transition-transform duration-300 ease-in-out z-30`}
         >
             <Sidebar setSidebarOpen={setSidebarOpen} />
         </div>
         {sidebarOpen && (
-            <div 
+            <div
                 onClick={() => setSidebarOpen(false)}
                 className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
                 aria-hidden="true"
@@ -62,7 +56,7 @@ const MainLayout = () => {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <Navbar setSidebarOpen={setSidebarOpen} sidebarOpen={sidebarOpen} />
-        
+
         <main className="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8">
           <Outlet />
         </main>
@@ -79,7 +73,7 @@ function App() {
             e.target.blur();
         }
     };
-    
+
     document.addEventListener('wheel', preventNumberChange);
     return () => document.removeEventListener('wheel', preventNumberChange);
   }, []);
@@ -89,7 +83,7 @@ function App() {
     const checkAuthStatus = () => {
       const token = authService.getCurrentToken();
       const currentPath = window.location.pathname;
-      
+
       // If no valid token and not already on login/register pages
       if (!token && !['/login', '/request-access'].includes(currentPath)) {
         console.log('No valid token found, redirecting to login');
@@ -107,7 +101,7 @@ function App() {
 
       <Route element={<ProtectedRoute />}>
         <Route element={<MainLayout />}>
-            
+
             <Route element={<PermissionRoute requiredPermission="manage:users" />}>
                 <Route path="/approvals" element={<ApprovalPage />} />
                 <Route path="/users" element={<UserManagementPage />} />
@@ -116,7 +110,7 @@ function App() {
 
             <Route element={<PermissionRoute requiredPermission="view:dashboard" />}>
                 <Route path="/" element={<Dashboard />} />
-                <Route path="/reports" element={<PlaceholderPage title="Reports" />} />
+                <Route path="/reports" element={<ReportsPage />} />
             </Route>
 
             <Route element={<PermissionRoute requiredPermission="view:cashbook" />}>

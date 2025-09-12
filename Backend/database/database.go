@@ -122,10 +122,6 @@ func (db *DB) UpdateUser(userID int, req *models.UpdateUserRequest) error {
 		return err
 	}
 
-	// --- THIS IS THE FIX ---
-	// The previous "INSERT ... ON CONFLICT" query was incorrect for the current database schema.
-	// This new logic first deletes the user's existing roles and then inserts the new one,
-	// which correctly handles the update.
 	deleteRoleQuery := `DELETE FROM user_roles WHERE user_id = $1`
 	_, err = tx.Exec(context.Background(), deleteRoleQuery, userID)
 	if err != nil {
@@ -870,8 +866,6 @@ func (db *DB) SyncPermissions(permissions []string) error {
 	return tx.Commit(context.Background())
 }
 
-// ADD THESE FUNCTIONS TO YOUR EXISTING database/database.go FILE
-
 // CreateVendor creates a new vendor with factories
 func (db *DB) CreateVendor(req *models.CreateVendorRequest, vendorID string, userID int) (*models.Vendor, error) {
 	tx, err := db.pool.Begin(context.Background())
@@ -1477,7 +1471,7 @@ func (db *DB) GetInventoryAudits() ([]models.InventoryAudit, error) {
             users u ON a.audited_by_user_id = u.id
         ORDER BY 
             a.created_at DESC
-        LIMIT 100` // Limit to last 100 entries for performance
+        LIMIT 100`
 
 	rows, err := db.pool.Query(context.Background(), query)
 	if err != nil {
@@ -1604,4 +1598,67 @@ func (db *DB) CreateWorkforceMaterialReport(report *models.WorkforceMaterialRepo
 		report.RdfDispatchedTons, report.AfrDispatchedTons, report.InertTons, report.TransportationExpenses, recyclablesJSON, report.CreatedByUserID,
 	)
 	return err
+}
+
+func (db *DB) GetPlantHeadReports() ([]models.PlantHeadReport, error) {
+	query := `SELECT id, report_date::text, waste_processed_tons, waste_unprocessed_tons, rdf_processed_tons, afr_processed_tons, ragpicker_count, machine_up_time_hours, machine_down_time_hours, sorting_accuracy_percent, machine_issues, safety_incident, vip_visit, equipment_maintenance, plant_start_time, shredder_up_time_hours, shredder_down_time_hours, trip_count, lost_time_hours, created_by_user_id, created_at FROM plant_head_reports ORDER BY report_date DESC`
+	rows, err := db.pool.Query(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var reports []models.PlantHeadReport
+	for rows.Next() {
+		var r models.PlantHeadReport
+		if err := rows.Scan(&r.ID, &r.ReportDate, &r.WasteProcessedTons, &r.WasteUnprocessedTons, &r.RdfProcessedTons, &r.AfrProcessedTons, &r.RagpickerCount, &r.MachineUpTimeHours, &r.MachineDownTimeHours, &r.SortingAccuracyPercent, &r.MachineIssues, &r.SafetyIncident, &r.VipVisit, &r.EquipmentMaintenance, &r.PlantStartTime, &r.ShredderUpTimeHours, &r.ShredderDownTimeHours, &r.TripCount, &r.LostTimeHours, &r.CreatedByUserID, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		reports = append(reports, r)
+	}
+	return reports, nil
+}
+
+func (db *DB) GetAsstPlantHeadReports() ([]models.AsstPlantHeadReport, error) {
+	query := `SELECT id, report_date::text, waste_processed_tons, waste_unprocessed_tipping_tons, rdf_processed_tons, afr_processed_tons, machine_up_time_hours, machine_down_time_hours, machine_issues, safety_incident, equipment_maintenance, shredder_up_time_hours, shredder_down_time_hours, trip_count, lost_time_hours, manpower_night_shift, created_by_user_id, created_at FROM asst_plant_head_reports ORDER BY report_date DESC`
+	rows, err := db.pool.Query(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var reports []models.AsstPlantHeadReport
+	for rows.Next() {
+		var r models.AsstPlantHeadReport
+		if err := rows.Scan(&r.ID, &r.ReportDate, &r.WasteProcessedTons, &r.WasteUnprocessedTippingTons, &r.RdfProcessedTons, &r.AfrProcessedTons, &r.MachineUpTimeHours, &r.MachineDownTimeHours, &r.MachineIssues, &r.SafetyIncident, &r.EquipmentMaintenance, &r.ShredderUpTimeHours, &r.ShredderDownTimeHours, &r.TripCount, &r.LostTimeHours, &r.ManpowerNightShift, &r.CreatedByUserID, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		reports = append(reports, r)
+	}
+	return reports, nil
+}
+
+func (db *DB) GetWorkforceMaterialReports() ([]models.WorkforceMaterialReport, error) {
+	query := `SELECT id, report_date::text, workers_present_count, diesel_consumption_liters, electricity_consumption_units, power_factor, rdf_dispatched_tons, afr_dispatched_tons, inert_tons, transportation_expenses, recyclables_dispatched, created_by_user_id, created_at FROM workforce_material_reports ORDER BY report_date DESC`
+	rows, err := db.pool.Query(context.Background(), query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var reports []models.WorkforceMaterialReport
+	for rows.Next() {
+		var r models.WorkforceMaterialReport
+		var recyclablesJSON []byte
+		if err := rows.Scan(&r.ID, &r.ReportDate, &r.WorkersPresentCount, &r.DieselConsumptionLiters, &r.ElectricityConsumptionUnits, &r.PowerFactor, &r.RdfDispatchedTons, &r.AfrDispatchedTons, &r.InertTons, &r.TransportationExpenses, &recyclablesJSON, &r.CreatedByUserID, &r.CreatedAt); err != nil {
+			return nil, err
+		}
+		if recyclablesJSON != nil {
+			if err := json.Unmarshal(recyclablesJSON, &r.RecyclablesDispatched); err != nil {
+				return nil, err
+			}
+		}
+		reports = append(reports, r)
+	}
+	return reports, nil
 }

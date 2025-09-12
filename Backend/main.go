@@ -111,6 +111,11 @@ func main() {
 		ops.POST("/reports/asst-plant-head", middleware.PermissionMiddleware("create:asst_plant_head_report"), h.CreateAsstPlantHeadReport)
 		ops.POST("/reports/workforce-material", middleware.PermissionMiddleware("create:workforce_material_report"), h.CreateWorkforceMaterialReport)
 
+		// Routes to get reports
+		ops.GET("/reports/plant-head", middleware.PermissionMiddleware("view:reports"), h.GetPlantHeadReports)
+		ops.GET("/reports/asst-plant-head", middleware.PermissionMiddleware("view:reports"), h.GetAsstPlantHeadReports)
+		ops.GET("/reports/workforce-material", middleware.PermissionMiddleware("view:reports"), h.GetWorkforceMaterialReports)
+
 	}
 
 	log.Println("Server starting on port 8080...")

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { FaBook, FaPlus, FaMinus, FaCalendarAlt, FaArrowUp, FaArrowDown, FaWallet, FaDotCircle } from 'react-icons/fa';
 import { getCashbookData, createCashbookTransaction } from '../services/apiService';
 
@@ -27,6 +27,7 @@ const CashbookPage = () => {
     const [amount, setAmount] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const dateInputRef = useRef(null);
     
     const fetchDataForDate = useCallback(async (date) => {
         try {
@@ -97,8 +98,22 @@ const CashbookPage = () => {
                         <h2 className="text-xl font-bold text-slate-800 border-b pb-3">New Transaction</h2>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Entry Date</label>
-                            <input type="date" value={entryDate} onChange={(e) => setEntryDate(e.target.value)}
-                                className="w-full p-2 border border-slate-300 rounded-lg h-10"/>
+                            <div
+                                className="relative h-10 w-full border border-slate-300 rounded-lg flex items-center px-3 bg-white cursor-pointer"
+                                onClick={() => dateInputRef.current?.showPicker()}
+                            >
+                                <span>
+                                    {new Date(entryDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
+                                </span>
+                                <FaCalendarAlt className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                <input
+                                    ref={dateInputRef}
+                                    type="date"
+                                    value={entryDate}
+                                    onChange={(e) => setEntryDate(e.target.value)}
+                                    className="opacity-0 absolute top-0 left-0 w-full h-full cursor-pointer"
+                                />
+                            </div>
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Transaction Type</label>

@@ -57,3 +57,30 @@ func (h *Handlers) CreateWorkforceMaterialReport(c *gin.Context) {
 	}
 	c.JSON(http.StatusCreated, gin.H{"message": "Report submitted successfully"})
 }
+
+func (h *Handlers) GetPlantHeadReports(c *gin.Context) {
+	reports, err := h.DB.GetPlantHeadReports()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch plant head reports"})
+		return
+	}
+	c.JSON(http.StatusOK, reports)
+}
+
+func (h *Handlers) GetAsstPlantHeadReports(c *gin.Context) {
+	reports, err := h.DB.GetAsstPlantHeadReports()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch asst plant head reports"})
+		return
+	}
+	c.JSON(http.StatusOK, reports)
+}
+
+func (h *Handlers) GetWorkforceMaterialReports(c *gin.Context) {
+	reports, err := h.DB.GetWorkforceMaterialReports()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch workforce and material reports"})
+		return
+	}
+	c.JSON(http.StatusOK, reports)
+}

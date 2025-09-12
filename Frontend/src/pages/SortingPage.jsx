@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FaRecycle, FaSave, FaCalendarAlt } from 'react-icons/fa';
 import { createSortingLog, getSortingLogs } from '../services/apiService';
 // --- THIS IS THE FIX ---
@@ -13,6 +13,7 @@ const SortingPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const dateInputRef = useRef(null);
 
     const fetchLogs = async () => {
         try {
@@ -75,13 +76,25 @@ const SortingPage = () => {
             <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow-lg">
                 <div className="flex flex-wrap justify-between items-center mb-6 border-b pb-4">
                     <h2 className="text-xl font-bold text-slate-800">Log Sorted Quantities (in Tons)</h2>
-                    <div className="relative">
-                        <label htmlFor="entryDate" className="font-semibold text-slate-700 mr-2">Entry Date:</label>
-                        <input
-                            type="date" id="entryDate" value={entryDate}
-                            onChange={(e) => setEntryDate(e.target.value)}
-                            className="p-2 border rounded-lg h-10"
-                        />
+                    <div className="w-full md:w-auto">
+                        <label htmlFor="entryDate" className="block text-sm font-medium text-slate-700 mb-1">Entry Date</label>
+                        <div
+                            className="relative h-10 w-full border border-slate-300 rounded-lg flex items-center px-3 bg-white cursor-pointer"
+                            onClick={() => dateInputRef.current?.showPicker()}
+                        >
+                            <span>
+                                {new Date(entryDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}
+                            </span>
+                            <FaCalendarAlt className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input
+                                ref={dateInputRef}
+                                type="date"
+                                id="entryDate"
+                                value={entryDate}
+                                onChange={(e) => setEntryDate(e.target.value)}
+                                className="opacity-0 absolute top-0 left-0 w-full h-full cursor-pointer"
+                            />
+                        </div>
                     </div>
                 </div>
 
