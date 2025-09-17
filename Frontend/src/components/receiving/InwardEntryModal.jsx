@@ -2,18 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { FaTimes, FaTruck, FaMapMarkerAlt, FaBalanceScale, FaBoxes, FaUserTie } from 'react-icons/fa';
 import CreatableSelect from 'react-select/creatable';
 
-const InwardEntryModal = ({ isOpen, onClose, entryType, sources, destinations, materials, parties, onSave }) => {
+const InwardEntryModal = ({ isOpen, onClose, entryType, sources, destinations, materials, parties, waterTankerVendors, onSave }) => {
     const isDryWaste = entryType === 'Dry Waste';
+    const isWaterTanker = entryType === 'Water Tanker';
 
-    // --- THIS IS THE FIX ---
-    // It finds the 'Dry Waste' object from the materials list to use as a default.
     const defaultDryWasteMaterial = materials.find(m => m.label === 'Dry Waste');
 
     const getInitialFormState = () => ({
         vehicleNumber: '',
         grossWeight: '',
-        // If it's a Dry Waste entry, use the default object. Otherwise, use 'Empty'.
-        material: isDryWaste ? defaultDryWasteMaterial : { value: 'empty', label: 'Empty' },
+        material: isDryWaste ? defaultDryWasteMaterial : isWaterTanker ? { value: 'water', label: 'Water' } : { value: 'empty', label: 'Empty' },
     });
 
     const [formData, setFormData] = useState(getInitialFormState());
@@ -21,7 +19,6 @@ const InwardEntryModal = ({ isOpen, onClose, entryType, sources, destinations, m
     const [selectedParty, setSelectedParty] = useState(null);
 
     useEffect(() => {
-        // This effect now correctly resets the form state every time the modal is opened.
         setFormData(getInitialFormState());
         setSelectedPartner(null);
         setSelectedParty(null);
@@ -47,7 +44,7 @@ const InwardEntryModal = ({ isOpen, onClose, entryType, sources, destinations, m
             alert('Please select a material type.');
             return;
         }
-        if (!isDryWaste && !selectedParty) {
+        if (!isDryWaste && !isWaterTanker && !selectedParty) {
             alert('Please select a party.');
             return;
         }
@@ -64,7 +61,7 @@ const InwardEntryModal = ({ isOpen, onClose, entryType, sources, destinations, m
                     <FaTimes size={20} />
                 </button>
                 
-                <h2 className="text-xl font-bold text-slate-800 mb-6">{isDryWaste ? 'Log New Dry Waste Vehicle' : 'Log New Empty Vehicle'}</h2>
+                <h2 className="text-xl font-bold text-slate-800 mb-6">{isDryWaste ? 'Log New Dry Waste Vehicle' : isWaterTanker ? 'Log Water Tanker' : 'Log New Empty Vehicle'}</h2>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <InputField label="Vehicle Number" name="vehicleNumber" value={formData.vehicleNumber} onChange={handleChange} icon={<FaTruck />} required />
@@ -76,6 +73,15 @@ const InwardEntryModal = ({ isOpen, onClose, entryType, sources, destinations, m
                                 isClearable options={sources} value={selectedPartner}
                                 onChange={setSelectedPartner}
                                 placeholder="Select or create a source..." required
+                            />
+                        </div>
+                    ) : isWaterTanker ? (
+                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Vendor</label>
+                            <CreatableSelect
+                                isClearable options={waterTankerVendors} value={selectedPartner}
+                                onChange={setSelectedPartner}
+                                placeholder="Select or create a vendor..." required
                             />
                         </div>
                     ) : (
@@ -101,14 +107,16 @@ const InwardEntryModal = ({ isOpen, onClose, entryType, sources, destinations, m
                             />
                         </div>
                     ) : (
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Party Name</label>
-                            <CreatableSelect
-                                isClearable options={parties} value={selectedParty}
-                                onChange={setSelectedParty}
-                                placeholder="Select or create a party..." required
-                            />
-                        </div>
+                        !isWaterTanker && (
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Party Name</label>
+                                <CreatableSelect
+                                    isClearable options={parties} value={selectedParty}
+                                    onChange={setSelectedParty}
+                                    placeholder="Select or create a party..." required
+                                />
+                            </div>
+                        )
                     )}
                 </div>
 

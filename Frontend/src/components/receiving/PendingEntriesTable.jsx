@@ -35,7 +35,7 @@ const PendingEntriesTable = ({ entries, loading, error, onWeighOut, onDelete }) 
                 <td className="td">{entry.material}</td>
                 <td className="td">{new Date(entry.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
                 <td className="td text-right font-bold">
-                  {entry.entry_type === 'Dry Waste' ? entry.gross_weight_tons.toFixed(3) : '-'}
+                  {entry.entry_type === 'Dry Waste' || entry.entry_type === 'Water Tanker' ? entry.gross_weight_tons.toFixed(3) : '-'}
                 </td>
                 <td className="td text-right font-bold">
                   {entry.entry_type === 'Empty Vehicle' ? entry.gross_weight_tons.toFixed(3) : '-'}

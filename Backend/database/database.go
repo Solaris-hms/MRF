@@ -874,6 +874,15 @@ func (db *DB) CreateVendor(req *models.CreateVendorRequest, vendorID string, use
 	}
 	defer tx.Rollback(context.Background())
 
+	ownershipJSON, err := json.Marshal(req.TypeOfOwnership)
+	if err != nil {
+		return nil, err
+	}
+	businessJSON, err := json.Marshal(req.TypeOfBusiness)
+	if err != nil {
+		return nil, err
+	}
+
 	// Insert vendor
 	query := `
 		INSERT INTO vendors (id, vendor_name, vendor_code, year_of_establishment, type_of_ownership, 
@@ -884,8 +893,8 @@ func (db *DB) CreateVendor(req *models.CreateVendorRequest, vendorID string, use
 
 	var vendor models.Vendor
 	err = tx.QueryRow(context.Background(), query,
-		vendorID, req.VendorName, req.VendorCode, req.YearOfEstablishment, req.TypeOfOwnership,
-		req.TypeOfBusiness, req.IsSSI_MSME, req.RegistrationNo, req.CPCBLicNo, req.SalesTaxNo,
+		vendorID, req.VendorName, req.VendorCode, req.YearOfEstablishment, ownershipJSON,
+		businessJSON, req.IsSSI_MSME, req.RegistrationNo, req.CPCBLicNo, req.SalesTaxNo,
 		req.GSTNo, req.PANNo, req.PreparedBy, req.AuthorizedBy, req.ApprovedBy, userID,
 	).Scan(&vendor.CreatedAt, &vendor.UpdatedAt, &vendor.Status)
 
@@ -952,7 +961,8 @@ func (db *DB) GetAllVendors() ([]models.Vendor, error) {
 	var vendors []models.Vendor
 	for rows.Next() {
 		var vendor models.Vendor
-		var vendorCode, yearOfEstablishment, typeOfOwnership, typeOfBusiness, isSsiMsme, registrationNo, cpcbLicNo, salesTaxNo, gstNo, panNo, preparedBy, authorizedBy, approvedBy sql.NullString
+		var vendorCode, yearOfEstablishment, isSsiMsme, registrationNo, cpcbLicNo, salesTaxNo, gstNo, panNo, preparedBy, authorizedBy, approvedBy sql.NullString
+		var typeOfOwnership, typeOfBusiness []byte
 
 		if err := rows.Scan(
 			&vendor.ID, &vendor.VendorName, &vendorCode, &yearOfEstablishment, &typeOfOwnership,
@@ -970,11 +980,11 @@ func (db *DB) GetAllVendors() ([]models.Vendor, error) {
 		if yearOfEstablishment.Valid {
 			vendor.YearOfEstablishment = &yearOfEstablishment.String
 		}
-		if typeOfOwnership.Valid {
-			vendor.TypeOfOwnership = &typeOfOwnership.String
+		if typeOfOwnership != nil {
+			json.Unmarshal(typeOfOwnership, &vendor.TypeOfOwnership)
 		}
-		if typeOfBusiness.Valid {
-			vendor.TypeOfBusiness = &typeOfBusiness.String
+		if typeOfBusiness != nil {
+			json.Unmarshal(typeOfBusiness, &vendor.TypeOfBusiness)
 		}
 		if isSsiMsme.Valid {
 			vendor.IsSSI_MSME = &isSsiMsme.String
@@ -1037,7 +1047,8 @@ func (db *DB) GetVendorByID(vendorID string) (*models.Vendor, error) {
 		FROM vendors WHERE id = $1`
 
 	var vendor models.Vendor
-	var vendorCode, yearOfEstablishment, typeOfOwnership, typeOfBusiness, isSsiMsme, registrationNo, cpcbLicNo, salesTaxNo, gstNo, panNo, preparedBy, authorizedBy, approvedBy sql.NullString
+	var vendorCode, yearOfEstablishment, isSsiMsme, registrationNo, cpcbLicNo, salesTaxNo, gstNo, panNo, preparedBy, authorizedBy, approvedBy sql.NullString
+	var typeOfOwnership, typeOfBusiness []byte
 
 	err := db.pool.QueryRow(context.Background(), query, vendorID).Scan(
 		&vendor.ID, &vendor.VendorName, &vendorCode, &yearOfEstablishment, &typeOfOwnership,
@@ -1061,11 +1072,11 @@ func (db *DB) GetVendorByID(vendorID string) (*models.Vendor, error) {
 	if yearOfEstablishment.Valid {
 		vendor.YearOfEstablishment = &yearOfEstablishment.String
 	}
-	if typeOfOwnership.Valid {
-		vendor.TypeOfOwnership = &typeOfOwnership.String
+	if typeOfOwnership != nil {
+		json.Unmarshal(typeOfOwnership, &vendor.TypeOfOwnership)
 	}
-	if typeOfBusiness.Valid {
-		vendor.TypeOfBusiness = &typeOfBusiness.String
+	if typeOfBusiness != nil {
+		json.Unmarshal(typeOfBusiness, &vendor.TypeOfBusiness)
 	}
 	if isSsiMsme.Valid {
 		vendor.IsSSI_MSME = &isSsiMsme.String
@@ -1140,13 +1151,21 @@ func (db *DB) UpdateVendor(vendorID string, req *models.UpdateVendorRequest) err
 		argCount++
 	}
 	if req.TypeOfOwnership != nil {
+		ownershipJSON, err := json.Marshal(req.TypeOfOwnership)
+		if err != nil {
+			return err
+		}
 		setParts = append(setParts, fmt.Sprintf("type_of_ownership = $%d", argCount))
-		args = append(args, *req.TypeOfOwnership)
+		args = append(args, ownershipJSON)
 		argCount++
 	}
 	if req.TypeOfBusiness != nil {
+		businessJSON, err := json.Marshal(req.TypeOfBusiness)
+		if err != nil {
+			return err
+		}
 		setParts = append(setParts, fmt.Sprintf("type_of_business = $%d", argCount))
-		args = append(args, *req.TypeOfBusiness)
+		args = append(args, businessJSON)
 		argCount++
 	}
 	if req.Status != nil {

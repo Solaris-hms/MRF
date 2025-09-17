@@ -5,6 +5,7 @@ import {
     FaIdCard, FaCalendarAlt, FaPlus, FaTimes, FaWarehouse, FaUpload,
     FaEdit, FaTrash, FaDownload, FaEye, FaFileAlt, FaTable
 } from 'react-icons/fa';
+import Select from 'react-select';
 import { createVendor, getVendors, updateVendor, deleteVendor, uploadVendorDocuments, downloadVendorDocument } from '../services/apiService';
 
 const VendorRegistrationPage = () => {
@@ -20,8 +21,8 @@ const VendorRegistrationPage = () => {
         factories: [{
             address1: '', address2: '', address3: '', mob_no: '', fax_no: '', email_id: ''
         }],
-        type_of_ownership: '',
-        type_of_business: '',
+        type_of_ownership: [],
+        type_of_business: [],
         is_ssi_msme: '',
         registration_no: '',
         cpcb_lic_no: '',
@@ -50,17 +51,21 @@ const VendorRegistrationPage = () => {
         fetchVendors();
     }, []);
 
-    const ownershipTypes = [
+    const ownershipOptions = [
         'Public Sector', 'Private Sector', 'Joint Sector', 'Proprietorship', 'Partnership'
-    ];
+    ].map(o => ({ value: o, label: o }));
 
-    const businessTypes = [
+    const businessTypeOptions = [
         'Manufacturing', 'Trading', 'Contractors', 'Transporters', 'Service Company'
-    ];
+    ].map(b => ({ value: b, label: b }));
 
     const handleInputChange = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
     };
+
+    const handleMultiSelectChange = (field, selectedOptions) => {
+        setFormData(prev => ({...prev, [field]: selectedOptions || []}))
+    }
 
     const handleFactoryChange = (index, field, value) => {
         setFormData(prev => ({
@@ -109,10 +114,16 @@ const VendorRegistrationPage = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsSubmitting(true);
+
+        const dataToSend = {
+            ...formData,
+            type_of_ownership: formData.type_of_ownership.map(o => o.value),
+            type_of_business: formData.type_of_business.map(b => b.value)
+        }
         
         try {
             if (editingVendor) {
-                await updateVendor(editingVendor.id, formData);
+                await updateVendor(editingVendor.id, dataToSend);
                 if (attachments.length > 0) {
                     const filesToUpload = attachments.filter(a => a.file).map(a => a.file);
                     if(filesToUpload.length > 0) {
@@ -120,7 +131,7 @@ const VendorRegistrationPage = () => {
                     }
                 }
             } else {
-                const response = await createVendor(formData);
+                const response = await createVendor(dataToSend);
                 const newVendor = response.data;
                 if (attachments.length > 0) {
                      const filesToUpload = attachments.filter(a => a.file).map(a => a.file);
@@ -149,8 +160,8 @@ const VendorRegistrationPage = () => {
             vendor_code: vendor.vendor_code || '',
             year_of_establishment: vendor.year_of_establishment || '',
             factories: vendor.factories.length > 0 ? vendor.factories : initialFormData.factories,
-            type_of_ownership: vendor.type_of_ownership || '',
-            type_of_business: vendor.type_of_business || '',
+            type_of_ownership: (vendor.type_of_ownership || []).map(o => ({value: o, label: o})),
+            type_of_business: (vendor.type_of_business || []).map(b => ({value: b, label: b})),
             is_ssi_msme: vendor.is_ssi_msme || '',
             registration_no: vendor.registration_no || '',
             cpcb_lic_no: vendor.cpcb_lic_no || '',
@@ -442,11 +453,11 @@ const VendorRegistrationPage = () => {
                         <div class="field-row">
                             <div class="field">
                                 <span class="field-label">Type of Ownership:</span>
-                                <span class="field-value">${vendor.type_of_ownership || ''}</span>
+                                <span class="field-value">${(vendor.type_of_ownership || []).join(', ')}</span>
                             </div>
                             <div class="field">
                                 <span class="field-label">Type of Business:</span>
-                                <span class="field-value">${vendor.type_of_business || ''}</span>
+                                <span class="field-value">${(vendor.type_of_business || []).join(', ')}</span>
                             </div>
                         </div>
                         <div class="field-row">
@@ -597,7 +608,7 @@ const VendorRegistrationPage = () => {
                                                     {vendor.vendor_code}
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap text-gray-600">
-                                                    {vendor.type_of_business}
+                                                    {(vendor.type_of_business || []).join(', ')}
                                                 </td>
                                                
                                                 <td className="px-6 py-4 whitespace-nowrap text-gray-600">
@@ -811,23 +822,31 @@ const VendorRegistrationPage = () => {
                                 Company Information and Type of Business
                             </h2>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <SelectField
-                                    label="Type of Ownership"
-                                    name="type_of_ownership"
-                                    value={formData.type_of_ownership}
-                                    onChange={(e) => handleInputChange('type_of_ownership', e.target.value)}
-                                    options={ownershipTypes}
-                                    placeholder="Select ownership type"
-                                />
+                                <div className="space-y-2">
+                                     <label className="block text-sm font-semibold text-gray-700">Type of Ownership</label>
+                                     <Select
+                                        isMulti
+                                        name="type_of_ownership"
+                                        options={ownershipOptions}
+                                        value={formData.type_of_ownership}
+                                        onChange={(options) => handleMultiSelectChange('type_of_ownership', options)}
+                                        className="basic-multi-select"
+                                        classNamePrefix="select"
+                                     />
+                                </div>
                                 
-                                <SelectField
-                                    label="Type of Business"
-                                     name="type_of_business"
-                                    value={formData.type_of_business}
-                                    onChange={(e) => handleInputChange('type_of_business', e.target.value)}
-                                    options={businessTypes}
-                                    placeholder="Select business type"
-                                />
+                                <div className="space-y-2">
+                                     <label className="block text-sm font-semibold text-gray-700">Type of Business</label>
+                                     <Select
+                                        isMulti
+                                        name="type_of_business"
+                                        options={businessTypeOptions}
+                                        value={formData.type_of_business}
+                                        onChange={(options) => handleMultiSelectChange('type_of_business', options)}
+                                        className="basic-multi-select"
+                                        classNamePrefix="select"
+                                     />
+                                </div>
                                 
                                 <SelectField
                                     label="Whether registered as SSI unit / MSME"

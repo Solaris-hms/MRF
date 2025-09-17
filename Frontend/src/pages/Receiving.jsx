@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FaTruckLoading, FaTruck } from 'react-icons/fa';
+import { FaTruckLoading, FaTruck, FaTint } from 'react-icons/fa';
 import PendingEntriesTable from '../components/receiving/PendingEntriesTable';
 import CompleteEntryModal from '../components/receiving/CompleteEntryModal';
 import InwardEntryModal from '../components/receiving/InwardEntryModal';
-import { getPendingEntries, createInwardEntry, completeInwardEntry, getAllPartners, createPartner, deleteInwardEntry } from '../services/apiService'; // Import deleteInwardEntry
-// --- THIS IS THE FIX ---
+import { getPendingEntries, createInwardEntry, completeInwardEntry, getAllPartners, createPartner, deleteInwardEntry } from '../services/apiService';
 import { EXPORTABLE_MATERIALS } from '../config/materials';
 
-// This list defines the materials for the "Dry Waste" dropdown.
 const defaultMaterials = [
     { value: 'dry-waste', label: 'Dry Waste' },
     { value: 'cardboard', label: 'Cardboard' },
@@ -15,7 +13,6 @@ const defaultMaterials = [
     { value: 'paper', label: 'Paper' },
 ];
 
-// The old hardcoded list is replaced by the imported one.
 const exportableMaterials = EXPORTABLE_MATERIALS.map(item => ({
     value: item.toLowerCase().replace(/ /g, '-'),
     label: item
@@ -36,6 +33,8 @@ const ReceivingPage = () => {
     const sources = useMemo(() => allPartners.filter(p => p.type === 'Source').map(s => ({ value: s.id, label: s.name })), [allPartners]);
     const destinations = useMemo(() => allPartners.filter(p => p.type === 'Destination').map(d => ({ value: d.id, label: d.name })), [allPartners]);
     const parties = useMemo(() => allPartners.filter(p => p.type === 'Party').map(p => ({ value: p.id, label: p.name })), [allPartners]);
+    const waterTankerVendors = useMemo(() => allPartners.filter(p => p.type === 'Water Tanker Vendor').map(p => ({ value: p.id, label: p.name })), [allPartners]);
+
 
     const fetchData = async () => {
         try {
@@ -78,7 +77,7 @@ const ReceivingPage = () => {
             let party = formData.party;
 
             if (partner && partner.__isNew__) {
-                const type = formData.entryType === 'Dry Waste' ? 'Source' : 'Destination';
+                const type = formData.entryType === 'Dry Waste' ? 'Source' : formData.entryType === 'Water Tanker' ? 'Water Tanker Vendor' : 'Destination';
                 const res = await createPartner(partner.label, type);
                 partner = { value: res.data.id, label: res.data.name };
             }
@@ -89,7 +88,7 @@ const ReceivingPage = () => {
 
             const requestData = {
                 vehicle_number: formData.vehicleNumber,
-                source_id: entryType === 'Dry Waste' ? partner.value : null,
+                source_id: entryType === 'Dry Waste' || entryType === 'Water Tanker' ? partner.value : null,
                 destination_id: entryType === 'Empty Vehicle' ? partner.value : null,
                 party_id: entryType === 'Empty Vehicle' ? party.value : null,
                 material: formData.material.label,
@@ -115,12 +114,11 @@ const ReceivingPage = () => {
         }
     };
 
-    // --- THIS IS THE NEW DELETE HANDLER ---
     const handleDeleteEntry = async (entryId) => {
         if (window.confirm('Are you sure you want to delete this pending entry? This action cannot be undone.')) {
             try {
                 await deleteInwardEntry(entryId);
-                fetchData(); // Refresh the data to remove the deleted entry
+                fetchData(); 
             } catch (err) {
                 alert('Failed to delete entry. Please try again.');
                 console.error(err);
@@ -130,7 +128,7 @@ const ReceivingPage = () => {
 
     return (
         <div className="space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <button 
                     onClick={() => handleOpenEntryModal('Dry Waste')}
                     className="flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
@@ -147,6 +145,14 @@ const ReceivingPage = () => {
                     <h2 className="text-xl font-bold text-slate-800">New Empty Vehicle Entry</h2>
                     <p className="text-slate-500 mt-1">Log an empty vehicle arriving for pickup.</p>
                 </button>
+                 <button 
+                    onClick={() => handleOpenEntryModal('Water Tanker')}
+                    className="flex flex-col items-center justify-center p-8 bg-white rounded-xl shadow-lg hover:shadow-2xl hover:-translate-y-1 transition-all duration-300"
+                >
+                    <FaTint className="text-5xl text-cyan-500 mb-4" />
+                    <h2 className="text-xl font-bold text-slate-800">New Water Tanker Entry</h2>
+                    <p className="text-slate-500 mt-1">Log a new water tanker arrival.</p>
+                </button>
             </div>
 
             <PendingEntriesTable 
@@ -154,7 +160,7 @@ const ReceivingPage = () => {
                 loading={loading} 
                 error={error} 
                 onWeighOut={handleOpenCompleteModal} 
-                onDelete={handleDeleteEntry} // Pass the new handler
+                onDelete={handleDeleteEntry}
             />
 
             {isEntryModalOpen && (
@@ -166,6 +172,7 @@ const ReceivingPage = () => {
                     destinations={destinations}
                     materials={defaultMaterials}
                     parties={parties}
+                    waterTankerVendors={waterTankerVendors}
                     onSave={handleSaveNewEntry}
                 />
             )}

@@ -82,7 +82,9 @@ type InwardEntry struct {
 	SourceID        *int       `json:"source_id"`
 	DestinationID   *int       `json:"destination_id"`
 	PartyID         *int       `json:"party_id"`
+	VendorID        *string    `json:"vendor_id"`
 	PartyName       *string    `json:"party_name,omitempty"`
+	VendorName      *string    `json:"vendor_name,omitempty"`
 	Material        *string    `json:"material"`
 	EntryType       string     `json:"entry_type"`
 	GrossWeightTons float64    `json:"gross_weight_tons"`
@@ -101,6 +103,7 @@ type CreateInwardEntryRequest struct {
 	SourceID        *int    `json:"source_id"`
 	DestinationID   *int    `json:"destination_id"`
 	PartyID         *int    `json:"party_id"`
+	VendorID        *string `json:"vendor_id"`
 	Material        string  `json:"material"`
 	EntryType       string  `json:"entry_type" binding:"required"`
 	GrossWeightTons float64 `json:"gross_weight_tons" binding:"required"`

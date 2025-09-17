@@ -1,0 +1,1 @@
+ALTER TABLE inward_entries ADD COLUMN vendor_id VARCHAR(255) REFERENCES vendors(id);
