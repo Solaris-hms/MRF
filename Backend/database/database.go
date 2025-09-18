@@ -610,16 +610,18 @@ func (db *DB) CreateMaterialSale(req *models.CreateMaterialSaleRequest, userID i
         INSERT INTO material_sales 
             (inward_entry_id, party_id, sale_date, driver_name, driver_mobile, rate, gst_percentage, 
             amount, gst_amount, total_amount, mode_of_payment, remark, transportation_expense, 
-            transporter_id, created_by_user_id)
+            transporter_id, created_by_user_id, original_weight_tons, deduction_type, deduction_value,
+            deduction_amount, deduction_reason, billing_weight_tons)
         VALUES 
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
         RETURNING id`
 
 	var saleID int
 	err := db.pool.QueryRow(context.Background(), query,
 		req.InwardEntryID, req.PartyID, req.SaleDate, req.DriverName, req.DriverMobile, req.Rate,
 		req.GSTPercentage, req.Amount, req.GSTAmount, req.TotalAmount, req.ModeOfPayment, req.Remark,
-		req.TransportationExpense, req.TransporterID, userID,
+		req.TransportationExpense, req.TransporterID, userID, req.OriginalWeightTons, req.DeductionType,
+		req.DeductionValue, req.DeductionAmount, req.DeductionReason, req.BillingWeightTons,
 	).Scan(&saleID)
 
 	if err != nil {
@@ -636,7 +638,9 @@ func (db *DB) GetMaterialSales() ([]models.MaterialSale, error) {
             ie.net_weight AS net_weight, p.name AS party_name, t.name as transporter_name, ms.driver_name,
             ms.driver_mobile, ms.rate, ms.gst_percentage, ms.mode_of_payment,
             ms.remark, ms.amount, ms.gst_amount, ms.total_amount, ms.created_at,
-            ms.transportation_expense, ms.inward_entry_id
+            ms.transportation_expense, ms.inward_entry_id,
+            ms.original_weight_tons, ms.deduction_type, ms.deduction_value,
+            ms.deduction_amount, ms.deduction_reason, ms.billing_weight_tons
         FROM material_sales ms
         JOIN inward_entries ie ON ms.inward_entry_id = ie.id
         JOIN partners p ON ms.party_id = p.id
@@ -658,6 +662,8 @@ func (db *DB) GetMaterialSales() ([]models.MaterialSale, error) {
 			&sale.PartyName, &sale.TransporterName, &sale.DriverName, &sale.DriverMobile, &sale.Rate,
 			&sale.GSTPercentage, &sale.ModeOfPayment, &sale.Remark, &sale.Amount, &sale.GSTAmount,
 			&sale.TotalAmount, &sale.CreatedAt, &sale.TransportationExpense, &sale.InwardEntryID,
+			&sale.OriginalWeightTons, &sale.DeductionType, &sale.DeductionValue,
+			&sale.DeductionAmount, &sale.DeductionReason, &sale.BillingWeightTons,
 		); err != nil {
 			return nil, err
 		}

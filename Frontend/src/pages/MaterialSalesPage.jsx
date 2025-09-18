@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { FaShoppingCart, FaRupeeSign, FaWeightHanging, FaTimes, FaFileExcel, FaTruck } from 'react-icons/fa';
+import { FaShoppingCart, FaRupeeSign, FaWeightHanging, FaTimes, FaFileExcel, FaTruck, FaPercent, FaCalculator } from 'react-icons/fa';
 import CreatableSelect from 'react-select/creatable';
 import { getCompletedEntries, createSaleEntry, getAllPartners, getMaterialSales, createPartner } from '../services/apiService';
 import * as XLSX from 'xlsx';
@@ -28,6 +28,12 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
     });
     const [selectedTransporter, setSelectedTransporter] = useState(null);
     const [rateUnit, setRateUnit] = useState('ton');
+    
+    // New moisture/deduction fields
+    const [deductionType, setDeductionType] = useState('none'); // 'none', 'percentage', 'fixed'
+    const [deductionValue, setDeductionValue] = useState('');
+    const [deductionReason, setDeductionReason] = useState('moisture'); // 'moisture', 'impurity', 'other'
+    const [customReason, setCustomReason] = useState('');
 
     useEffect(() => {
         if (entry) {
@@ -36,6 +42,10 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
                 modeOfPayment: 'Bill', remark: '', transportationExpense: ''
             });
             setSelectedTransporter(null);
+            setDeductionType('none');
+            setDeductionValue('');
+            setDeductionReason('moisture');
+            setCustomReason('');
         }
     }, [entry]);
 
@@ -43,11 +53,21 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
         return null;
     }
 
-    const netWeight = parseFloat(entry.net_weight_tons) || 0;
+    const originalWeight = parseFloat(entry.net_weight_tons) || 0;
     const rate = parseFloat(formData.rate) || 0;
     const ratePerTon = rateUnit === 'kg' ? rate * 1000 : rate;
     const gstPercentage = parseFloat(formData.gst) || 0;
-    const amount = netWeight * ratePerTon;
+    
+    // Calculate deduction
+    let deductionAmount = 0;
+    if (deductionType === 'percentage') {
+        deductionAmount = (originalWeight * (parseFloat(deductionValue) || 0)) / 100;
+    } else if (deductionType === 'fixed') {
+        deductionAmount = parseFloat(deductionValue) || 0;
+    }
+    
+    const billingWeight = Math.max(0, originalWeight - deductionAmount);
+    const amount = billingWeight * ratePerTon;
     const gstAmount = amount * (gstPercentage / 100);
     const totalAmountWithGST = amount + gstAmount;
 
@@ -56,12 +76,21 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
             alert('Please ensure a party is assigned and a rate is entered.');
             return;
         }
+        
+        const finalReason = deductionReason === 'other' ? customReason : deductionReason;
+        
         onSave({
             ...formData,
             ...entry,
             party_id: party.id,
             transporter: selectedTransporter,
             rate: ratePerTon,
+            original_weight_tons: originalWeight,
+            deduction_type: deductionType,
+            deduction_value: parseFloat(deductionValue) || 0,
+            deduction_amount: deductionAmount,
+            deduction_reason: finalReason,
+            billing_weight_tons: billingWeight,
             amount: amount,
             gst_amount: gstAmount,
             total_amount_with_gst: totalAmountWithGST,
@@ -69,9 +98,18 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
         });
     };
 
+    const deductionReasonOptions = [
+        { value: 'moisture', label: 'Moisture Content' },
+        { value: 'impurity', label: 'Impurity/Contamination' },
+        { value: 'quality', label: 'Quality Adjustment' },
+        { value: 'wastage', label: 'Wastage/Loss' },
+        { value: 'agreement', label: 'Mutual Agreement' },
+        { value: 'other', label: 'Other (Specify)' }
+    ];
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex items-center justify-center p-4">
-            <div className="relative bg-white rounded-xl shadow-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="relative bg-white rounded-xl shadow-2xl p-6 w-full max-w-5xl max-h-[90vh] overflow-y-auto">
                 <button type="button" onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600">
                     <FaTimes size={20} />
                 </button>
@@ -84,11 +122,117 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <InputField label="Material Name" value={entry.material} readOnly />
-                    <InputField label="Net Weight (Tons)" value={entry.net_weight_tons?.toFixed(3)} readOnly />
+                    <InputField label="Original Weight (Tons)" value={entry.net_weight_tons?.toFixed(3)} readOnly />
                     <InputField label="Party Name" value={party?.name || 'N/A'} readOnly />
                 </div>
 
-                <div className="border-t pt-4 mt-4">
+                {/* Weight Deduction Section */}
+                <div className="border-t border-b py-4 my-4 bg-amber-50 p-4 rounded-lg">
+                    <h3 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                        <FaCalculator className="text-amber-600" />
+                        Weight Adjustment for Billing
+                    </h3>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Deduction Type</label>
+                            <select 
+                                value={deductionType} 
+                                onChange={(e) => {
+                                    setDeductionType(e.target.value);
+                                    setDeductionValue('');
+                                }}
+                                className="w-full p-2 border border-slate-300 rounded-lg h-10 bg-white"
+                            >
+                                <option value="none">No Deduction</option>
+                                <option value="percentage">Percentage (%)</option>
+                                <option value="fixed">Fixed Amount (Tons)</option>
+                            </select>
+                        </div>
+
+                        {deductionType !== 'none' && (
+                            <>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                                        {deductionType === 'percentage' ? 'Percentage (%)' : 'Amount (Tons)'}
+                                    </label>
+                                    <div className="relative">
+                                        {deductionType === 'percentage' && (
+                                            <FaPercent className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                        )}
+                                        <input 
+                                            type="number" 
+                                            step="0.01"
+                                            value={deductionValue} 
+                                            onChange={(e) => setDeductionValue(e.target.value)}
+                                            className="w-full p-2 border border-slate-300 rounded-lg h-10 bg-white"
+                                            placeholder={deductionType === 'percentage' ? 'e.g., 40' : 'e.g., 4.5'}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-700 mb-1">Reason</label>
+                                    <select 
+                                        value={deductionReason} 
+                                        onChange={(e) => setDeductionReason(e.target.value)}
+                                        className="w-full p-2 border border-slate-300 rounded-lg h-10 bg-white"
+                                    >
+                                        {deductionReasonOptions.map(option => (
+                                            <option key={option.value} value={option.value}>
+                                                {option.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {deductionReason === 'other' && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">Custom Reason</label>
+                                        <input 
+                                            type="text" 
+                                            value={customReason} 
+                                            onChange={(e) => setCustomReason(e.target.value)}
+                                            className="w-full p-2 border border-slate-300 rounded-lg h-10 bg-white"
+                                            placeholder="Specify reason..."
+                                        />
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+
+                    {deductionType !== 'none' && (
+                        <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
+                                <div className="text-center">
+                                    <p className="text-slate-600 font-medium">Original Weight</p>
+                                    <p className="text-lg font-bold text-slate-800">{originalWeight.toFixed(3)} Tons</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-slate-600 font-medium">Deduction</p>
+                                    <p className="text-lg font-bold text-red-600">
+                                        -{deductionAmount.toFixed(3)} Tons
+                                        {deductionType === 'percentage' && ` (${deductionValue}%)`}
+                                    </p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-slate-600 font-medium">Billing Weight</p>
+                                    <p className="text-lg font-bold text-green-600">{billingWeight.toFixed(3)} Tons</p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-slate-600 font-medium">Reason</p>
+                                    <p className="text-sm font-semibold text-slate-700 capitalize">
+                                        {deductionReason === 'other' ? customReason : deductionReason.replace('_', ' ')}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                {/* Original form fields */}
+                <div className="border-t pt-4">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Transporter Name</label>
@@ -134,7 +278,11 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
                 </div>
 
                 <div className="mt-6 pt-4 border-t bg-slate-50 p-4 rounded-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center items-center">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-center items-center">
+                        <div>
+                            <p className="text-sm font-medium text-slate-500">Billing Weight</p>
+                            <p className="text-lg font-bold text-green-600">{billingWeight.toFixed(3)} Tons</p>
+                        </div>
                         <div>
                             <p className="text-sm font-medium text-slate-500">Base Amount</p>
                             <p className="text-lg font-bold text-slate-800">{amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
@@ -250,7 +398,11 @@ const MaterialSalesPage = () => {
             "Date": new Date(sale.sale_date).toLocaleDateString(),
             "Vehicle No": sale.vehicle_number,
             "Material Name": sale.material_name,
-            "Net Weight (Tons)": sale.net_weight_tons,
+            "Original Weight (Tons)": sale.original_weight_tons || sale.net_weight_tons,
+            "Deduction Type": sale.deduction_type || 'none',
+            "Deduction Amount (Tons)": sale.deduction_amount || 0,
+            "Deduction Reason": sale.deduction_reason || 'N/A',
+            "Billing Weight (Tons)": sale.billing_weight_tons || sale.net_weight_tons,
             "Party Name": sale.party_name,
             "Transporter Name": sale.transporter_name,
             "Driver Name": sale.driver_name,
@@ -269,9 +421,10 @@ const MaterialSalesPage = () => {
         XLSX.utils.book_append_sheet(workbook, worksheet, "Material Sales");
 
         worksheet["!cols"] = [
-            { wch: 5 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 18 }, { wch: 25 }, 
-            { wch: 25 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, 
-            { wch: 15 }, { wch: 22 }, { wch: 18 }, { wch: 30 },
+            { wch: 5 }, { wch: 12 }, { wch: 15 }, { wch: 20 }, { wch: 18 }, { wch: 15 }, 
+            { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 25 }, { wch: 25 }, { wch: 20 }, 
+            { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 15 }, { wch: 15 }, { wch: 22 }, 
+            { wch: 18 }, { wch: 30 },
         ];
         
         XLSX.writeFile(workbook, "MaterialSalesLog_Detailed.xlsx");
@@ -279,7 +432,7 @@ const MaterialSalesPage = () => {
 
     const dailySummary = useMemo(() => {
         const totalSales = salesLog.reduce((sum, s) => sum + s.total_amount, 0);
-        const totalQuantity = salesLog.reduce((sum, s) => sum + s.net_weight_tons, 0);
+        const totalQuantity = salesLog.reduce((sum, s) => sum + (s.billing_weight_tons || s.net_weight_tons), 0);
         return { totalSales, totalQuantity, transactionCount: salesLog.length };
     }, [salesLog]);
 
@@ -352,9 +505,11 @@ const MaterialSalesPage = () => {
                                 <th className="th">Sale Time</th>
                                 <th className="th">Material</th>
                                 <th className="th">Party</th>
-                                <th className="th text-right">Quantity (Tons)</th>
+                                <th className="th text-right">Original (Tons)</th>
+                                <th className="th text-right">Billing (Tons)</th>
                                 <th className="th text-right">Rate</th>
                                 <th className="th text-right">Total Amount</th>
+                                <th className="th text-center">Deduction</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
@@ -363,12 +518,26 @@ const MaterialSalesPage = () => {
                                     <td className="td text-slate-500">{new Date(sale.created_at).toLocaleString()}</td>
                                     <td className="td font-medium">{sale.material_name}</td>
                                     <td className="td">{sale.party_name}</td>
-                                    <td className="td text-right font-semibold">{sale.net_weight_tons?.toFixed(3)}</td>
+                                    <td className="td text-right font-semibold text-slate-600">
+                                        {(sale.original_weight_tons || sale.net_weight_tons)?.toFixed(3)}
+                                    </td>
+                                    <td className="td text-right font-semibold text-green-600">
+                                        {(sale.billing_weight_tons || sale.net_weight_tons)?.toFixed(3)}
+                                    </td>
                                     <td className="td text-right">{sale.rate.toLocaleString('en-IN')}</td>
                                     <td className="td text-right font-bold text-blue-600">{sale.total_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                    <td className="td text-center">
+                                        {sale.deduction_amount && sale.deduction_amount > 0 ? (
+                                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800" title={`${sale.deduction_reason}: -${sale.deduction_amount?.toFixed(3)} tons`}>
+                                                -{sale.deduction_amount?.toFixed(3)}T
+                                            </span>
+                                        ) : (
+                                            <span className="text-slate-400">None</span>
+                                        )}
+                                    </td>
                                 </tr>
                             )) : (
-                                <tr><td colSpan="6" className="text-center py-10 text-slate-500">No sales have been logged yet.</td></tr>
+                                <tr><td colSpan="8" className="text-center py-10 text-slate-500">No sales have been logged yet.</td></tr>
                             )}
                         </tbody>
                     </table>
