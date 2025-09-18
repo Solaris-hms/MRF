@@ -86,9 +86,17 @@ export const createSaleEntry = (saleData) => {
         mode_of_payment: saleData.modeOfPayment,
         remark: saleData.remark,
         transportation_expense: parseFloat(saleData.transportation_expense) || 0,
+        // --- UPDATED DEDUCTION FIELDS ---
+        original_weight_tons: saleData.original_weight_tons,
+        deduction_type: saleData.deduction_type,
+        deduction_value: saleData.deduction_value,
+        deduction_amount: saleData.deduction_amount,
+        deduction_reason: saleData.deduction_reason,
+        billing_weight_tons: saleData.billing_weight_tons,
     };
     return api.post('/operations/sales', payload);
 };
+
 
 // --- Partner Functions ---
 export const getAllPartners = () => { return api.get('/operations/partners'); };

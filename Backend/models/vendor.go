@@ -8,8 +8,8 @@ type Vendor struct {
 	VendorName          string    `json:"vendor_name" binding:"required"`
 	VendorCode          *string   `json:"vendor_code"`
 	YearOfEstablishment *string   `json:"year_of_establishment"`
-	TypeOfOwnership     *string   `json:"type_of_ownership"`
-	TypeOfBusiness      *string   `json:"type_of_business"`
+	TypeOfOwnership     []string  `json:"type_of_ownership"`
+	TypeOfBusiness      []string  `json:"type_of_business"`
 	IsSSI_MSME          *string   `json:"is_ssi_msme"`
 	RegistrationNo      *string   `json:"registration_no"`
 	CPCBLicNo           *string   `json:"cpcb_lic_no"`
@@ -59,8 +59,8 @@ type CreateVendorRequest struct {
 	VendorName          string           `json:"vendor_name" binding:"required"`
 	VendorCode          *string          `json:"vendor_code"`
 	YearOfEstablishment *string          `json:"year_of_establishment"`
-	TypeOfOwnership     *string          `json:"type_of_ownership"`
-	TypeOfBusiness      *string          `json:"type_of_business"`
+	TypeOfOwnership     []string         `json:"type_of_ownership"`
+	TypeOfBusiness      []string         `json:"type_of_business"`
 	IsSSI_MSME          *string          `json:"is_ssi_msme"`
 	RegistrationNo      *string          `json:"registration_no"`
 	CPCBLicNo           *string          `json:"cpcb_lic_no"`
@@ -89,8 +89,8 @@ type UpdateVendorRequest struct {
 	VendorName          *string          `json:"vendor_name"`
 	VendorCode          *string          `json:"vendor_code"`
 	YearOfEstablishment *string          `json:"year_of_establishment"`
-	TypeOfOwnership     *string          `json:"type_of_ownership"`
-	TypeOfBusiness      *string          `json:"type_of_business"`
+	TypeOfOwnership     []string         `json:"type_of_ownership"`
+	TypeOfBusiness      []string         `json:"type_of_business"`
 	IsSSI_MSME          *string          `json:"is_ssi_msme"`
 	RegistrationNo      *string          `json:"registration_no"`
 	CPCBLicNo           *string          `json:"cpcb_lic_no"`

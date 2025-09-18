@@ -82,7 +82,9 @@ type InwardEntry struct {
 	SourceID        *int       `json:"source_id"`
 	DestinationID   *int       `json:"destination_id"`
 	PartyID         *int       `json:"party_id"`
+	VendorID        *string    `json:"vendor_id"`
 	PartyName       *string    `json:"party_name,omitempty"`
+	VendorName      *string    `json:"vendor_name,omitempty"`
 	Material        *string    `json:"material"`
 	EntryType       string     `json:"entry_type"`
 	GrossWeightTons float64    `json:"gross_weight_tons"`
@@ -101,6 +103,7 @@ type CreateInwardEntryRequest struct {
 	SourceID        *int    `json:"source_id"`
 	DestinationID   *int    `json:"destination_id"`
 	PartyID         *int    `json:"party_id"`
+	VendorID        *string `json:"vendor_id"`
 	Material        string  `json:"material"`
 	EntryType       string  `json:"entry_type" binding:"required"`
 	GrossWeightTons float64 `json:"gross_weight_tons" binding:"required"`
@@ -147,9 +150,8 @@ type CreateCashbookTransactionRequest struct {
 	Amount      float64 `json:"amount" binding:"required"`
 }
 type CreateMaterialSaleRequest struct {
-	InwardEntryID int `json:"inward_entry_id" binding:"required"`
-	PartyID       int `json:"party_id" binding:"required"`
-	// --- THIS IS NEW ---
+	InwardEntryID         int     `json:"inward_entry_id" binding:"required"`
+	PartyID               int     `json:"party_id" binding:"required"`
 	TransporterID         *int    `json:"transporter_id"`
 	SaleDate              string  `json:"sale_date" binding:"required"`
 	DriverName            string  `json:"driver_name"`
@@ -163,14 +165,20 @@ type CreateMaterialSaleRequest struct {
 	Remark                string  `json:"remark"`
 	TransportationExpense float64 `json:"transportation_expense"`
 	CreatedByUserID       int     `json:"created_by_user_id"`
+	// --- NEW FIELDS ---
+	OriginalWeightTons float64 `json:"original_weight_tons"`
+	DeductionType      string  `json:"deduction_type"`
+	DeductionValue     float64 `json:"deduction_value"`
+	DeductionAmount    float64 `json:"deduction_amount"`
+	DeductionReason    string  `json:"deduction_reason"`
+	BillingWeightTons  float64 `json:"billing_weight_tons"`
 }
 
 type MaterialSale struct {
-	ID            int     `json:"id"`
-	InwardEntryID int     `json:"inward_entry_id,omitempty"`
-	PartyID       int     `json:"party_id,omitempty"`
-	PartyName     *string `json:"party_name,omitempty"`
-	// --- THESE ARE NEW ---
+	ID                    int       `json:"id"`
+	InwardEntryID         int       `json:"inward_entry_id,omitempty"`
+	PartyID               int       `json:"party_id,omitempty"`
+	PartyName             *string   `json:"party_name,omitempty"`
 	TransporterID         *int      `json:"transporter_id,omitempty"`
 	TransporterName       *string   `json:"transporter_name,omitempty"`
 	SaleDate              time.Time `json:"sale_date"`
@@ -189,6 +197,13 @@ type MaterialSale struct {
 	CreatedAt             time.Time `json:"created_at"`
 	MaterialName          *string   `json:"material_name,omitempty"`
 	NetWeightTons         float64   `json:"net_weight_tons,omitempty"`
+	// --- NEW FIELDS ---
+	OriginalWeightTons *float64 `json:"original_weight_tons,omitempty"`
+	DeductionType      *string  `json:"deduction_type,omitempty"`
+	DeductionValue     *float64 `json:"deduction_value,omitempty"`
+	DeductionAmount    *float64 `json:"deduction_amount,omitempty"`
+	DeductionReason    *string  `json:"deduction_reason,omitempty"`
+	BillingWeightTons  *float64 `json:"billing_weight_tons,omitempty"`
 }
 type Employee struct {
 	ID          int       `json:"id"`

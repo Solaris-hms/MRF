@@ -610,16 +610,18 @@ func (db *DB) CreateMaterialSale(req *models.CreateMaterialSaleRequest, userID i
         INSERT INTO material_sales 
             (inward_entry_id, party_id, sale_date, driver_name, driver_mobile, rate, gst_percentage, 
             amount, gst_amount, total_amount, mode_of_payment, remark, transportation_expense, 
-            transporter_id, created_by_user_id)
+            transporter_id, created_by_user_id, original_weight_tons, deduction_type, deduction_value,
+            deduction_amount, deduction_reason, billing_weight_tons)
         VALUES 
-            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+            ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)
         RETURNING id`
 
 	var saleID int
 	err := db.pool.QueryRow(context.Background(), query,
 		req.InwardEntryID, req.PartyID, req.SaleDate, req.DriverName, req.DriverMobile, req.Rate,
 		req.GSTPercentage, req.Amount, req.GSTAmount, req.TotalAmount, req.ModeOfPayment, req.Remark,
-		req.TransportationExpense, req.TransporterID, userID,
+		req.TransportationExpense, req.TransporterID, userID, req.OriginalWeightTons, req.DeductionType,
+		req.DeductionValue, req.DeductionAmount, req.DeductionReason, req.BillingWeightTons,
 	).Scan(&saleID)
 
 	if err != nil {
@@ -636,7 +638,9 @@ func (db *DB) GetMaterialSales() ([]models.MaterialSale, error) {
             ie.net_weight AS net_weight, p.name AS party_name, t.name as transporter_name, ms.driver_name,
             ms.driver_mobile, ms.rate, ms.gst_percentage, ms.mode_of_payment,
             ms.remark, ms.amount, ms.gst_amount, ms.total_amount, ms.created_at,
-            ms.transportation_expense, ms.inward_entry_id
+            ms.transportation_expense, ms.inward_entry_id,
+            ms.original_weight_tons, ms.deduction_type, ms.deduction_value,
+            ms.deduction_amount, ms.deduction_reason, ms.billing_weight_tons
         FROM material_sales ms
         JOIN inward_entries ie ON ms.inward_entry_id = ie.id
         JOIN partners p ON ms.party_id = p.id
@@ -658,6 +662,8 @@ func (db *DB) GetMaterialSales() ([]models.MaterialSale, error) {
 			&sale.PartyName, &sale.TransporterName, &sale.DriverName, &sale.DriverMobile, &sale.Rate,
 			&sale.GSTPercentage, &sale.ModeOfPayment, &sale.Remark, &sale.Amount, &sale.GSTAmount,
 			&sale.TotalAmount, &sale.CreatedAt, &sale.TransportationExpense, &sale.InwardEntryID,
+			&sale.OriginalWeightTons, &sale.DeductionType, &sale.DeductionValue,
+			&sale.DeductionAmount, &sale.DeductionReason, &sale.BillingWeightTons,
 		); err != nil {
 			return nil, err
 		}
@@ -874,6 +880,15 @@ func (db *DB) CreateVendor(req *models.CreateVendorRequest, vendorID string, use
 	}
 	defer tx.Rollback(context.Background())
 
+	ownershipJSON, err := json.Marshal(req.TypeOfOwnership)
+	if err != nil {
+		return nil, err
+	}
+	businessJSON, err := json.Marshal(req.TypeOfBusiness)
+	if err != nil {
+		return nil, err
+	}
+
 	// Insert vendor
 	query := `
 		INSERT INTO vendors (id, vendor_name, vendor_code, year_of_establishment, type_of_ownership, 
@@ -884,8 +899,8 @@ func (db *DB) CreateVendor(req *models.CreateVendorRequest, vendorID string, use
 
 	var vendor models.Vendor
 	err = tx.QueryRow(context.Background(), query,
-		vendorID, req.VendorName, req.VendorCode, req.YearOfEstablishment, req.TypeOfOwnership,
-		req.TypeOfBusiness, req.IsSSI_MSME, req.RegistrationNo, req.CPCBLicNo, req.SalesTaxNo,
+		vendorID, req.VendorName, req.VendorCode, req.YearOfEstablishment, ownershipJSON,
+		businessJSON, req.IsSSI_MSME, req.RegistrationNo, req.CPCBLicNo, req.SalesTaxNo,
 		req.GSTNo, req.PANNo, req.PreparedBy, req.AuthorizedBy, req.ApprovedBy, userID,
 	).Scan(&vendor.CreatedAt, &vendor.UpdatedAt, &vendor.Status)
 
@@ -952,7 +967,8 @@ func (db *DB) GetAllVendors() ([]models.Vendor, error) {
 	var vendors []models.Vendor
 	for rows.Next() {
 		var vendor models.Vendor
-		var vendorCode, yearOfEstablishment, typeOfOwnership, typeOfBusiness, isSsiMsme, registrationNo, cpcbLicNo, salesTaxNo, gstNo, panNo, preparedBy, authorizedBy, approvedBy sql.NullString
+		var vendorCode, yearOfEstablishment, isSsiMsme, registrationNo, cpcbLicNo, salesTaxNo, gstNo, panNo, preparedBy, authorizedBy, approvedBy sql.NullString
+		var typeOfOwnership, typeOfBusiness []byte
 
 		if err := rows.Scan(
 			&vendor.ID, &vendor.VendorName, &vendorCode, &yearOfEstablishment, &typeOfOwnership,
@@ -970,11 +986,11 @@ func (db *DB) GetAllVendors() ([]models.Vendor, error) {
 		if yearOfEstablishment.Valid {
 			vendor.YearOfEstablishment = &yearOfEstablishment.String
 		}
-		if typeOfOwnership.Valid {
-			vendor.TypeOfOwnership = &typeOfOwnership.String
+		if typeOfOwnership != nil {
+			json.Unmarshal(typeOfOwnership, &vendor.TypeOfOwnership)
 		}
-		if typeOfBusiness.Valid {
-			vendor.TypeOfBusiness = &typeOfBusiness.String
+		if typeOfBusiness != nil {
+			json.Unmarshal(typeOfBusiness, &vendor.TypeOfBusiness)
 		}
 		if isSsiMsme.Valid {
 			vendor.IsSSI_MSME = &isSsiMsme.String
@@ -1037,7 +1053,8 @@ func (db *DB) GetVendorByID(vendorID string) (*models.Vendor, error) {
 		FROM vendors WHERE id = $1`
 
 	var vendor models.Vendor
-	var vendorCode, yearOfEstablishment, typeOfOwnership, typeOfBusiness, isSsiMsme, registrationNo, cpcbLicNo, salesTaxNo, gstNo, panNo, preparedBy, authorizedBy, approvedBy sql.NullString
+	var vendorCode, yearOfEstablishment, isSsiMsme, registrationNo, cpcbLicNo, salesTaxNo, gstNo, panNo, preparedBy, authorizedBy, approvedBy sql.NullString
+	var typeOfOwnership, typeOfBusiness []byte
 
 	err := db.pool.QueryRow(context.Background(), query, vendorID).Scan(
 		&vendor.ID, &vendor.VendorName, &vendorCode, &yearOfEstablishment, &typeOfOwnership,
@@ -1061,11 +1078,11 @@ func (db *DB) GetVendorByID(vendorID string) (*models.Vendor, error) {
 	if yearOfEstablishment.Valid {
 		vendor.YearOfEstablishment = &yearOfEstablishment.String
 	}
-	if typeOfOwnership.Valid {
-		vendor.TypeOfOwnership = &typeOfOwnership.String
+	if typeOfOwnership != nil {
+		json.Unmarshal(typeOfOwnership, &vendor.TypeOfOwnership)
 	}
-	if typeOfBusiness.Valid {
-		vendor.TypeOfBusiness = &typeOfBusiness.String
+	if typeOfBusiness != nil {
+		json.Unmarshal(typeOfBusiness, &vendor.TypeOfBusiness)
 	}
 	if isSsiMsme.Valid {
 		vendor.IsSSI_MSME = &isSsiMsme.String
@@ -1140,13 +1157,21 @@ func (db *DB) UpdateVendor(vendorID string, req *models.UpdateVendorRequest) err
 		argCount++
 	}
 	if req.TypeOfOwnership != nil {
+		ownershipJSON, err := json.Marshal(req.TypeOfOwnership)
+		if err != nil {
+			return err
+		}
 		setParts = append(setParts, fmt.Sprintf("type_of_ownership = $%d", argCount))
-		args = append(args, *req.TypeOfOwnership)
+		args = append(args, ownershipJSON)
 		argCount++
 	}
 	if req.TypeOfBusiness != nil {
+		businessJSON, err := json.Marshal(req.TypeOfBusiness)
+		if err != nil {
+			return err
+		}
 		setParts = append(setParts, fmt.Sprintf("type_of_business = $%d", argCount))
-		args = append(args, *req.TypeOfBusiness)
+		args = append(args, businessJSON)
 		argCount++
 	}
 	if req.Status != nil {

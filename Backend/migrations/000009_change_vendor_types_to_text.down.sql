@@ -1,0 +1,2 @@
+ALTER TABLE vendors ALTER COLUMN type_of_ownership TYPE VARCHAR(100);
+ALTER TABLE vendors ALTER COLUMN type_of_business TYPE VARCHAR(100);

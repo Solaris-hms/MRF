@@ -1,0 +1,1 @@
+ALTER TABLE inward_entries DROP COLUMN vendor_id;
