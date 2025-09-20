@@ -67,9 +67,14 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
     }
     
     const billingWeight = Math.max(0, originalWeight - deductionAmount);
-    const amount = billingWeight * ratePerTon;
+    
+    // --- THIS IS THE FIX ---
+    // The final amount is now calculated using the billing weight rounded to 3 decimal places.
+    const roundedBillingWeight = parseFloat(billingWeight.toFixed(3));
+    const amount = roundedBillingWeight * ratePerTon;
     const gstAmount = amount * (gstPercentage / 100);
     const totalAmountWithGST = amount + gstAmount;
+
 
     const handleSave = () => {
         if (!party || !formData.rate) {
@@ -90,7 +95,7 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
             deduction_value: parseFloat(deductionValue) || 0,
             deduction_amount: deductionAmount,
             deduction_reason: finalReason,
-            billing_weight_tons: billingWeight,
+            billing_weight_tons: roundedBillingWeight, // Pass the rounded weight
             amount: amount,
             gst_amount: gstAmount,
             total_amount_with_gst: totalAmountWithGST,
@@ -122,7 +127,7 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <InputField label="Material Name" value={entry.material} readOnly />
-                    <InputField label="Original Weight (Tons)" value={entry.net_weight_tons?.toFixed(3)} readOnly />
+                    <InputField label="Original Weight (Tons)" value={originalWeight.toFixed(3)} readOnly />
                     <InputField label="Party Name" value={party?.name || 'N/A'} readOnly />
                 </div>
 
@@ -162,7 +167,7 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
                                         )}
                                         <input 
                                             type="number" 
-                                            step="0.01"
+                                            step="0.001"
                                             value={deductionValue} 
                                             onChange={(e) => setDeductionValue(e.target.value)}
                                             className="w-full p-2 border border-slate-300 rounded-lg h-10 bg-white"
@@ -249,14 +254,14 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Rate (INR)</label>
                             <div className="flex">
-                                <input type="number" value={formData.rate} onChange={(e) => setFormData({ ...formData, rate: e.target.value })} className="w-full p-2 border border-slate-300 rounded-l-lg h-10 bg-slate-50" />
+                                <input type="number" step="0.001" value={formData.rate} onChange={(e) => setFormData({ ...formData, rate: e.target.value })} className="w-full p-2 border border-slate-300 rounded-l-lg h-10 bg-slate-50" />
                                 <select value={rateUnit} onChange={(e) => setRateUnit(e.target.value)} className="p-2 border-t border-b border-r border-slate-300 rounded-r-lg h-10 bg-slate-100">
                                     <option value="ton">per Ton</option>
                                     <option value="kg">per Kilo</option>
                                 </select>
                             </div>
                         </div>
-                        <InputField label="GST (%)" type="number" value={formData.gst} onChange={(e) => setFormData({ ...formData, gst: e.target.value })} />
+                        <InputField label="GST (%)" type="number" step="0.001" value={formData.gst} onChange={(e) => setFormData({ ...formData, gst: e.target.value })} />
                         
                         <div>
                             <label className="block text-sm font-medium text-slate-700 mb-1">Mode of Payment</label>
@@ -270,7 +275,7 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
                             </select>
                         </div>
 
-                        <InputField label="Transportation Expense" type="number" value={formData.transportationExpense} icon={<FaTruck/>} onChange={(e) => setFormData({ ...formData, transportationExpense: e.target.value })} />
+                        <InputField label="Transportation Expense" type="number" step="0.001" value={formData.transportationExpense} icon={<FaTruck/>} onChange={(e) => setFormData({ ...formData, transportationExpense: e.target.value })} />
                     </div>
                      <div className="mt-4">
                         <InputField label="Remark" value={formData.remark} onChange={(e) => setFormData({ ...formData, remark: e.target.value })} />
@@ -285,15 +290,15 @@ const SaleEntryModal = ({ isOpen, onClose, entry, party, onSave, transporters })
                         </div>
                         <div>
                             <p className="text-sm font-medium text-slate-500">Base Amount</p>
-                            <p className="text-lg font-bold text-slate-800">{amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
+                            <p className="text-lg font-bold text-slate-800">{amount.toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 3, maximumFractionDigits: 3 })}</p>
                         </div>
                         <div>
                             <p className="text-sm font-medium text-slate-500">GST Amount</p>
-                            <p className="text-lg font-bold text-slate-800">{gstAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
+                            <p className="text-lg font-bold text-slate-800">{gstAmount.toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 3, maximumFractionDigits: 3 })}</p>
                         </div>
                         <div>
                             <p className="text-sm font-medium text-slate-500">Total Amount (with GST)</p>
-                            <p className="text-2xl font-bold text-blue-600">{totalAmountWithGST.toLocaleString('en-IN', { style: 'currency', currency: 'INR' })}</p>
+                            <p className="text-2xl font-bold text-blue-600">{totalAmountWithGST.toLocaleString('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 3, maximumFractionDigits: 3 })}</p>
                         </div>
                     </div>
                 </div>
@@ -398,20 +403,20 @@ const MaterialSalesPage = () => {
             "Date": new Date(sale.sale_date).toLocaleDateString(),
             "Vehicle No": sale.vehicle_number,
             "Material Name": sale.material_name,
-            "Original Weight (Tons)": sale.original_weight_tons || sale.net_weight_tons,
+            "Original Weight (Tons)": (sale.original_weight_tons || sale.net_weight_tons).toFixed(3),
             "Deduction Type": sale.deduction_type || 'none',
-            "Deduction Amount (Tons)": sale.deduction_amount || 0,
+            "Deduction Amount (Tons)": (sale.deduction_amount || 0).toFixed(3),
             "Deduction Reason": sale.deduction_reason || 'N/A',
-            "Billing Weight (Tons)": sale.billing_weight_tons || sale.net_weight_tons,
+            "Billing Weight (Tons)": (sale.billing_weight_tons || sale.net_weight_tons).toFixed(3),
             "Party Name": sale.party_name,
             "Transporter Name": sale.transporter_name,
             "Driver Name": sale.driver_name,
-            "Rate per Ton": sale.rate,
-            "Amount": sale.amount,
+            "Rate per Ton": sale.rate.toFixed(3),
+            "Amount": sale.amount.toFixed(3),
             "GST (%)": sale.gst_percentage,
-            "GST Amount": sale.gst_amount,
-            "Total Amount": sale.total_amount,
-            "Transportation Expense": sale.transportation_expense,
+            "GST Amount": sale.gst_amount.toFixed(3),
+            "Total Amount": sale.total_amount.toFixed(3),
+            "Transportation Expense": sale.transportation_expense.toFixed(3),
             "Mode of Payment": sale.mode_of_payment,
             "Remark": sale.remark,
         }));
@@ -524,8 +529,8 @@ const MaterialSalesPage = () => {
                                     <td className="td text-right font-semibold text-green-600">
                                         {(sale.billing_weight_tons || sale.net_weight_tons)?.toFixed(3)}
                                     </td>
-                                    <td className="td text-right">{sale.rate.toLocaleString('en-IN')}</td>
-                                    <td className="td text-right font-bold text-blue-600">{sale.total_amount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</td>
+                                    <td className="td text-right">{sale.rate.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                    <td className="td text-right font-bold text-blue-600">{sale.total_amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                                     <td className="td text-center">
                                         {sale.deduction_amount && sale.deduction_amount > 0 ? (
                                             <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-amber-100 text-amber-800" title={`${sale.deduction_reason}: -${sale.deduction_amount?.toFixed(3)} tons`}>
