@@ -1,3 +1,4 @@
+// Backend/config/permissions.go
 package config
 
 // AllPermissions defines the complete list of permissions used in the application.
@@ -38,7 +39,7 @@ var AllPermissions = []string{
 	"delete:vendors",
 	"manage:vendor_documents",
 
-	// --- NEW REPORTING PERMISSIONS ---
+	// Reporting Permissions
 	"create:plant_head_report",
 	"create:asst_plant_head_report",
 	"create:workforce_material_report",
@@ -46,4 +47,10 @@ var AllPermissions = []string{
 
 	// Reports
 	"generate:reports",
+
+	// --- NEW INVENTORY & HR PERMISSIONS ---
+	"view:inventory",
+	"manage:inventory_audit",
+	"manage:employees",
+	"manage:attendance",
 }

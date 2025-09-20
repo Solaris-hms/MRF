@@ -1,3 +1,4 @@
+// Backend/main.go
 package main
 
 import (
@@ -32,8 +33,6 @@ func main() {
 
 	r.Static("/uploads", "./uploads")
 
-	// --- THIS IS THE CORS FIX ---
-	// This more permissive CORS policy will work for development and production.
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowOrigins = []string{"http://localhost:5173", "http://13.234.119.98", "http://mrf-management.duckdns.org", "https://mrf-management.duckdns.org"}
 	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
@@ -75,9 +74,9 @@ func main() {
 		ops.POST("/sorting-log", middleware.PermissionMiddleware("create:sorting_log"), h.CreateSortingLog)
 		ops.GET("/sorting-logs", middleware.PermissionMiddleware("create:sorting_log"), h.GetSortingLogs)
 
-		ops.GET("/inventory", h.GetInventory)
-		ops.POST("/inventory/adjust", h.AdjustInventory)
-		ops.GET("/inventory/audits", h.GetInventoryAudits)
+		ops.GET("/inventory", middleware.PermissionMiddleware("view:inventory"), h.GetInventory)
+		ops.POST("/inventory/adjust", middleware.PermissionMiddleware("manage:inventory_audit"), h.AdjustInventory)
+		ops.GET("/inventory/audits", middleware.PermissionMiddleware("manage:inventory_audit"), h.GetInventoryAudits)
 
 		ops.GET("/cashbook", middleware.PermissionMiddleware("view:cashbook"), h.GetCashbookData)
 		ops.POST("/cashbook", middleware.PermissionMiddleware("view:cashbook"), h.CreateCashbookTransaction)
@@ -85,13 +84,13 @@ func main() {
 		ops.GET("/sales", h.GetMaterialSales)
 		ops.POST("/sales", h.CreateMaterialSale)
 
-		ops.POST("/employees", h.CreateEmployee)
-		ops.GET("/employees", h.GetEmployees)
-		ops.PUT("/employees/:id", h.UpdateEmployee)
-		ops.DELETE("/employees/:id", h.DeleteEmployee)
+		ops.POST("/employees", middleware.PermissionMiddleware("manage:employees"), h.CreateEmployee)
+		ops.GET("/employees", middleware.PermissionMiddleware("manage:employees"), h.GetEmployees)
+		ops.PUT("/employees/:id", middleware.PermissionMiddleware("manage:employees"), h.UpdateEmployee)
+		ops.DELETE("/employees/:id", middleware.PermissionMiddleware("manage:employees"), h.DeleteEmployee)
 
-		ops.GET("/attendance", h.GetAttendance)
-		ops.POST("/attendance", h.SaveAttendance)
+		ops.GET("/attendance", middleware.PermissionMiddleware("manage:attendance"), h.GetAttendance)
+		ops.POST("/attendance", middleware.PermissionMiddleware("manage:attendance"), h.SaveAttendance)
 
 		ops.POST("/assets", middleware.PermissionMiddleware("create:assets"), h.CreateAsset)
 		ops.GET("/assets", middleware.PermissionMiddleware("view:assets"), h.GetAssets)
@@ -107,15 +106,14 @@ func main() {
 		ops.POST("/vendors/:id/documents", middleware.PermissionMiddleware("manage:vendor_documents"), h.UploadVendorDocument)
 		ops.GET("/vendor-documents/:docId/download", middleware.PermissionMiddleware("view:vendors"), h.DownloadVendorDocument)
 		ops.DELETE("/vendor-documents/:docId", middleware.PermissionMiddleware("manage:vendor_documents"), h.DeleteVendorDocument)
+
 		ops.POST("/reports/plant-head", middleware.PermissionMiddleware("create:plant_head_report"), h.CreatePlantHeadReport)
 		ops.POST("/reports/asst-plant-head", middleware.PermissionMiddleware("create:asst_plant_head_report"), h.CreateAsstPlantHeadReport)
 		ops.POST("/reports/workforce-material", middleware.PermissionMiddleware("create:workforce_material_report"), h.CreateWorkforceMaterialReport)
 
-		// Routes to get reports
 		ops.GET("/reports/plant-head", middleware.PermissionMiddleware("view:reports"), h.GetPlantHeadReports)
 		ops.GET("/reports/asst-plant-head", middleware.PermissionMiddleware("view:reports"), h.GetAsstPlantHeadReports)
 		ops.GET("/reports/workforce-material", middleware.PermissionMiddleware("view:reports"), h.GetWorkforceMaterialReports)
-
 	}
 
 	log.Println("Server starting on port 8080...")

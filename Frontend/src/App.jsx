@@ -1,3 +1,4 @@
+// src/App.jsx
 import React, { useEffect, useState } from 'react';
 import { Routes, Route, Navigate, Outlet } from 'react-router-dom';
 
@@ -22,8 +23,7 @@ import VendorRegistrationPage from './pages/VendorRegistrationPage';
 import authService from './services/authService';
 import AuditPage from './pages/AuditPage';
 import DailyReportingPage from './pages/DailyReportingPage';
-import ReportsPage from './pages/ReportsPage'; // Import the new page
-
+import ReportsPage from './pages/ReportsPage';
 
 const ProtectedRoute = () => {
   const token = authService.getCurrentToken();
@@ -66,7 +66,6 @@ const MainLayout = () => {
 };
 
 function App() {
-  // Fixed scroll issue for number inputs
   useEffect(() => {
     const preventNumberChange = (e) => {
         if (e.target.type === 'number') {
@@ -78,13 +77,11 @@ function App() {
     return () => document.removeEventListener('wheel', preventNumberChange);
   }, []);
 
-  // Check token validity on app startup
   useEffect(() => {
     const checkAuthStatus = () => {
       const token = authService.getCurrentToken();
       const currentPath = window.location.pathname;
 
-      // If no valid token and not already on login/register pages
       if (!token && !['/login', '/request-access'].includes(currentPath)) {
         console.log('No valid token found, redirecting to login');
         window.location.href = '/login';
@@ -117,18 +114,29 @@ function App() {
                 <Route path="/cashbook" element={<CashbookPage />} />
                 <Route path="/material-sales" element={<MaterialSalesPage />} />
             </Route>
+            
+            <Route element={<PermissionRoute requiredPermission="view:inventory" />}>
+              <Route path="/inventory" element={<InventoryPage />} />
+            </Route>
+
+            <Route element={<PermissionRoute requiredPermission="manage:inventory_audit" />}>
+              <Route path="/audit" element={<AuditPage />} />
+            </Route>
+            
+            <Route element={<PermissionRoute requiredPermission="manage:employees" />}>
+              <Route path="/employees" element={<EmployeePage />} />
+            </Route>
+
+            <Route element={<PermissionRoute requiredPermission="manage:attendance" />}>
+              <Route path="/attendance" element={<AttendancePage />} />
+            </Route>
 
             <Route path="/receiving" element={<ReceivingPage />} />
             <Route path="/completed-entries" element={<CompletedEntriesPage />} />
             <Route path="/sorting" element={<SortingPage />} />
-            <Route path="/inventory" element={<InventoryPage />} />
-            <Route path="/attendance" element={<AttendancePage />} />
-            <Route path="/employees" element={<EmployeePage />} />
             <Route path="/assets" element={<AssetManagementPage />} />
             <Route path="/vendor-registration" element={<VendorRegistrationPage />} />
-            <Route path="/audit" element={<AuditPage />} />
             <Route path="/daily-reporting" element={<DailyReportingPage />} />
-
 
         </Route>
       </Route>
